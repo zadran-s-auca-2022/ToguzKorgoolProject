@@ -1,5 +1,5 @@
-// ----- Core game model -----
-class TogyzGame {
+// ----- Core game model for Toguz Korgool -----
+class ToguzKorgoolGame {
     constructor(onUpdate) {
         // onUpdate is a callback to refresh the UI
         this.onUpdate = onUpdate;
@@ -7,15 +7,17 @@ class TogyzGame {
     }
 
     reset() {
+        // Each player has 9 pits (korgool pits)
         // board[player][pitIndex]
         this.board = [
-            new Array(9).fill(9), // Player A (bottom, index 0)
-            new Array(9).fill(9)  // Player B (top, index 1)
+            new Array(9).fill(9), // Player A (bottom)
+            new Array(9).fill(9)  // Player B (top)
         ];
-        this.kazna = [0, 0];     // stores for A, B
-        this.currentPlayer = 0;  // 0 = A, 1 = B
+
+        this.kazan = [0, 0];       // Kazan for A, Kazan for B (stores)
+        this.currentPlayer = 0;    // 0 = Player A, 1 = Player B
         this.isOver = false;
-        this.winner = null;      // 0,1 or 'draw'
+        this.winner = null;
         this.onUpdate();
     }
 
@@ -26,31 +28,33 @@ class TogyzGame {
     checkGameOver() {
         if (this.isOver) return;
 
-        let sumA = this.getSideSum(0);
-        let sumB = this.getSideSum(1);
+        const sumA = this.getSideSum(0);
+        const sumB = this.getSideSum(1);
 
-        // If one player has no stones, the other collects remaining
+        // If one player has no korgools left, opponent takes all remaining
         if (sumA === 0 || sumB === 0) {
-            this.kazna[0] += sumA;
-            this.kazna[1] += sumB;
+            this.kazan[0] += sumA;
+            this.kazan[1] += sumB;
+
             this.board = [
                 new Array(9).fill(0),
                 new Array(9).fill(0)
             ];
         }
 
-        // Winning by reaching more than half of all stones (81)
-        if (this.kazna[0] > 81) {
+        // Winning condition: first to collect more than 81 korgools
+        if (this.kazan[0] > 81) {
             this.isOver = true;
             this.winner = 0;
-        } else if (this.kazna[1] > 81) {
+        } else if (this.kazan[1] > 81) {
             this.isOver = true;
             this.winner = 1;
         } else if (this.getSideSum(0) === 0 && this.getSideSum(1) === 0) {
-            // All stones in kaznas now
-            if (this.kazna[0] > this.kazna[1]) this.winner = 0;
-            else if (this.kazna[1] > this.kazna[0]) this.winner = 1;
+            // All korgools have been collected
+            if (this.kazan[0] > this.kazan[1]) this.winner = 0;
+            else if (this.kazan[1] > this.kazan[0]) this.winner = 1;
             else this.winner = 'draw';
+
             this.isOver = true;
         }
     }
@@ -60,12 +64,12 @@ class TogyzGame {
         if (this.isOver) return false;
         if (player !== this.currentPlayer) return false;
 
-        const stones = this.board[player][pitIndex];
-        if (stones <= 1) return false; // must leave 1 behind
+        const korgools = this.board[player][pitIndex];
+        if (korgools <= 1) return false; // must leave 1 behind
 
-        // Leave 1 stone in chosen pit
+        // Keep 1 korgool in the chosen pit
         this.board[player][pitIndex] = 1;
-        let toDistribute = stones - 1;
+        let toDistribute = korgools - 1;
 
         // Sowing loop
         let side = player;
@@ -74,7 +78,6 @@ class TogyzGame {
         let lastIndex = pitIndex;
 
         while (toDistribute > 0) {
-            // move across the board in a loop
             if (index >= 9) {
                 side = 1 - side; // switch side
                 index = 0;
@@ -88,21 +91,22 @@ class TogyzGame {
             index++;
         }
 
-        // Capture rule: last stone on opponent's side, even number
+        // Capture rule: last korgool lands on opponent side AND becomes even
         const opponent = 1 - player;
+
         if (lastSide === opponent && this.board[opponent][lastIndex] % 2 === 0) {
             const captured = this.board[opponent][lastIndex];
-            this.kazna[player] += captured;
+            this.kazan[player] += captured;
             this.board[opponent][lastIndex] = 0;
         }
 
         // Switch turn
         this.currentPlayer = opponent;
 
-        // Check end of game
+        // Check game over
         this.checkGameOver();
 
-        // Notify UI
+        // Update UI
         this.onUpdate();
         return true;
     }
@@ -122,7 +126,7 @@ const container = document.querySelector('.container');
 
 // Create pit elements once
 function createPits() {
-    // Top row: Player B pits, displayed right->left
+    // Top row: Player B pits displayed right-to-left
     rowTop.innerHTML = '';
     for (let i = 8; i >= 0; i--) {
         const pit = document.createElement('div');
@@ -133,7 +137,7 @@ function createPits() {
         rowTop.appendChild(pit);
     }
 
-    // Bottom row: Player A pits, left->right
+    // Bottom row: Player A pits left-to-right
     rowBottom.innerHTML = '';
     for (let i = 0; i < 9; i++) {
         const pit = document.createElement('div');
@@ -148,7 +152,7 @@ function createPits() {
 createPits();
 
 // Create game instance
-const game = new TogyzGame(updateUI);
+const game = new ToguzKorgoolGame(updateUI);
 
 function updateUI() {
     // Update pit counts
@@ -159,7 +163,7 @@ function updateUI() {
         const count = game.board[player][index];
         pit.querySelector('span').textContent = count;
 
-        // Enable only current player's pits with >1 stone
+        // Enable only current player's pits with >1 korgool
         if (player === game.currentPlayer && count > 1 && !game.isOver) {
             pit.classList.remove('disabled');
         } else {
@@ -167,12 +171,12 @@ function updateUI() {
         }
     });
 
-    // Update stores and scores
-    storeAEl.innerHTML = 'A<br>' + game.kazna[0];
-    storeBEl.innerHTML = 'B<br>' + game.kazna[1];
+    // Update Kazans
+    storeAEl.innerHTML = 'A<br>Kazan<br>' + game.kazan[0];
+    storeBEl.innerHTML = 'B<br>Kazan<br>' + game.kazan[1];
 
-    scoreAEl.textContent = 'Player A: ' + game.kazna[0];
-    scoreBEl.textContent = 'Player B: ' + game.kazna[1];
+    scoreAEl.textContent = 'Player A Kazan: ' + game.kazan[0];
+    scoreBEl.textContent = 'Player B Kazan: ' + game.kazan[1];
 
     // Highlight current player
     container.classList.remove('current-player-A', 'current-player-B');
