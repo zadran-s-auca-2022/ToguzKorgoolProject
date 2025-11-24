@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Togyzqumalaq Online</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Togyzqumalaq Online (Senior Project)</h1>
+
+    <div class="info">
+        <p>
+            Player A = bottom row, Player B = top row. <br>
+            Click on one of your pits (with more than 1 stone) to make a move.
+        </p>
+    </div>
+
+    <div id="scores" class="scores">
+        <div class="score" id="scoreA">Player A: 0</div>
+        <div class="score" id="scoreB">Player B: 0</div>
+    </div>
+
+    <div class="board">
+        <!-- Kazna / stores -->
+        <div class="store store-left" id="storeB">B<br>0</div>
+
+        <div class="pits-area">
+            <!-- Top row: Player B, shown right-to-left like real board -->
+            <div class="row row-top" id="row-top"></div>
+
+            <!-- Bottom row: Player A, left-to-right -->
+            <div class="row row-bottom" id="row-bottom"></div>
+        </div>
+
+        <div class="store store-right" id="storeA">A<br>0</div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <button id="resetBtn" class="btn">New Game</button>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
