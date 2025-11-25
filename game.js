@@ -14,7 +14,7 @@ class ToguzKorgoolGame {
             new Array(9).fill(9)  // Player B (top)
         ];
 
-        this.kazan = [0, 0];       // Kazan for A, Kazan for B (stores)
+        this.kazan = [0, 0];       // stores for A, B
         this.currentPlayer = 0;    // 0 = Player A, 1 = Player B
         this.isOver = false;
         this.winner = null;
@@ -171,12 +171,13 @@ function updateUI() {
         }
     });
 
-    // Update Kazans
-    storeAEl.innerHTML = 'A<br>Kazan<br>' + game.kazan[0];
-    storeBEl.innerHTML = 'B<br>Kazan<br>' + game.kazan[1];
+    // Update stores (just A/B and numbers, no "Kazan" text)
+    storeAEl.innerHTML = 'A<br>' + game.kazan[0];
+    storeBEl.innerHTML = 'B<br>' + game.kazan[1];
 
-    scoreAEl.textContent = 'Player A Kazan: ' + game.kazan[0];
-    scoreBEl.textContent = 'Player B Kazan: ' + game.kazan[1];
+    // Scores: show as "Player A: x", "Player B: x"
+    scoreAEl.textContent = 'Player A: ' + game.kazan[0];
+    scoreBEl.textContent = 'Player B: ' + game.kazan[1];
 
     // Highlight current player
     container.classList.remove('current-player-A', 'current-player-B');
