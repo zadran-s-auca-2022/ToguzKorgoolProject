@@ -1,215 +1,195 @@
-// ----- Core game model for Toguz Korgool -----
-class ToguzKorgoolGame {
-    constructor(onUpdate) {
-        // onUpdate is a callback to refresh the UI
-        this.onUpdate = onUpdate;
-        this.reset();
-    }
+// game.js
 
-    reset() {
-        // Each player has 9 pits (korgool pits)
-        // board[player][pitIndex]
-        this.board = [
-            new Array(9).fill(9), // Player A (bottom)
-            new Array(9).fill(9)  // Player B (top)
-        ];
+document.addEventListener("DOMContentLoaded", () => {
+    const PITS_PER_SIDE = 9;
+    const START_STONES = 9; // classic: 9 pits × 9 korgools
 
-        this.kazan = [0, 0];       // stores for A, B
-        this.currentPlayer = 0;    // 0 = Player A, 1 = Player B
-        this.isOver = false;
-        this.winner = null;
-        this.onUpdate();
-    }
+    let pitsA = new Array(PITS_PER_SIDE).fill(START_STONES); // bottom
+    let pitsB = new Array(PITS_PER_SIDE).fill(START_STONES); // top
+    let storeA = 0;
+    let storeB = 0;
+    let currentPlayer = "A";
+    let gameOver = false;
 
-    getSideSum(player) {
-        return this.board[player].reduce((a, b) => a + b, 0);
-    }
+    const rowTop = document.getElementById("row-top");
+    const rowBottom = document.getElementById("row-bottom");
+    const scoreAEl = document.getElementById("scoreA");
+    const scoreBEl = document.getElementById("scoreB");
+    const storeAEl = document.getElementById("storeA");
+    const storeBEl = document.getElementById("storeB");
+    const statusEl = document.getElementById("status");
+    const resetBtn = document.getElementById("resetBtn");
 
-    checkGameOver() {
-        if (this.isOver) return;
+    // ---------- BOARD SETUP ----------
 
-        const sumA = this.getSideSum(0);
-        const sumB = this.getSideSum(1);
-
-        // If one player has no korgools left, opponent takes all remaining
-        if (sumA === 0 || sumB === 0) {
-            this.kazan[0] += sumA;
-            this.kazan[1] += sumB;
-
-            this.board = [
-                new Array(9).fill(0),
-                new Array(9).fill(0)
-            ];
+    function createBoardDOM() {
+        // Player B (top row) – show reversed so it looks like a real board
+        rowTop.innerHTML = "";
+        for (let i = PITS_PER_SIDE - 1; i >= 0; i--) {
+            const pit = document.createElement("div");
+            pit.className = "pit pit-top";
+            pit.dataset.player = "B";
+            pit.dataset.index = i;
+            rowTop.appendChild(pit);
         }
 
-        // Winning condition: first to collect more than 81 korgools
-        if (this.kazan[0] > 81) {
-            this.isOver = true;
-            this.winner = 0;
-        } else if (this.kazan[1] > 81) {
-            this.isOver = true;
-            this.winner = 1;
-        } else if (this.getSideSum(0) === 0 && this.getSideSum(1) === 0) {
-            // All korgools have been collected
-            if (this.kazan[0] > this.kazan[1]) this.winner = 0;
-            else if (this.kazan[1] > this.kazan[0]) this.winner = 1;
-            else this.winner = 'draw';
+        // Player A (bottom row)
+        rowBottom.innerHTML = "";
+        for (let i = 0; i < PITS_PER_SIDE; i++) {
+            const pit = document.createElement("div");
+            pit.className = "pit pit-bottom";
+            pit.dataset.player = "A";
+            pit.dataset.index = i;
+            rowBottom.appendChild(pit);
+        }
 
-            this.isOver = true;
+        rowTop.addEventListener("click", onPitClick);
+        rowBottom.addEventListener("click", onPitClick);
+
+        updateView();
+    }
+
+    // ---------- HELPERS ----------
+
+    function setStatus(msg) {
+        statusEl.textContent = msg;
+    }
+
+    function updateView() {
+        // Update pits
+        document.querySelectorAll(".pit").forEach(pit => {
+            const player = pit.dataset.player;
+            const idx = parseInt(pit.dataset.index, 10);
+
+            let stones =
+                player === "A" ? pitsA[idx] : pitsB[idx];
+
+            pit.textContent = stones;
+            pit.classList.toggle("active-player", player === currentPlayer);
+        });
+
+        // Update stores
+        storeAEl.innerHTML = `A<br>Kazan<br>${storeA}`;
+        storeBEl.innerHTML = `B<br>Kazan<br>${storeB}`;
+
+        // Update scores text (stores only)
+        scoreAEl.textContent = `Player A : ${storeA}`;
+        scoreBEl.textContent = `Player B : ${storeB}`;
+
+        if (!gameOver) {
+            setStatus(`Player ${currentPlayer}'s turn`);
         }
     }
 
-    // player: 0 or 1; pitIndex: 0..8
-    makeMove(player, pitIndex) {
-        if (this.isOver) return false;
-        if (player !== this.currentPlayer) return false;
+    function totalStones(arr) {
+        return arr.reduce((a, b) => a + b, 0);
+    }
 
-        const korgools = this.board[player][pitIndex];
-        if (korgools <= 1) return false; // must leave 1 behind
+    function checkGameEnd() {
+        if (totalStones(pitsA) === 0 || totalStones(pitsB) === 0) {
+            // Remaining stones go to each player's kazan
+            storeA += totalStones(pitsA);
+            storeB += totalStones(pitsB);
+            pitsA.fill(0);
+            pitsB.fill(0);
+            gameOver = true;
 
-        // Keep 1 korgool in the chosen pit
-        this.board[player][pitIndex] = 1;
-        let toDistribute = korgools - 1;
-
-        // Sowing loop
-        let side = player;
-        let index = pitIndex + 1;
-        let lastSide = side;
-        let lastIndex = pitIndex;
-
-        while (toDistribute > 0) {
-            if (index >= 9) {
-                side = 1 - side; // switch side
-                index = 0;
+            if (storeA > storeB) {
+                setStatus(`Game over! Player A wins (${storeA} : ${storeB})`);
+            } else if (storeB > storeA) {
+                setStatus(`Game over! Player B wins (${storeB} : ${storeA})`);
+            } else {
+                setStatus(`Game over! It's a tie (${storeA} : ${storeB})`);
             }
+            updateView();
+        }
+    }
 
-            this.board[side][index]++;
-            toDistribute--;
+    // ---------- GAME LOGIC ----------
 
-            lastSide = side;
-            lastIndex = index;
-            index++;
+    function onPitClick(e) {
+        if (gameOver) return;
+        const target = e.target;
+        if (!target.classList.contains("pit")) return;
+
+        const player = target.dataset.player;
+        const idx = parseInt(target.dataset.index, 10);
+
+        if (player !== currentPlayer) {
+            setStatus(`It's Player ${currentPlayer}'s turn`);
+            return;
         }
 
-        // Capture rule: last korgool lands on opponent side AND becomes even
-        const opponent = 1 - player;
+        const pits = player === "A" ? pitsA : pitsB;
+        let stones = pits[idx];
 
-        if (lastSide === opponent && this.board[opponent][lastIndex] % 2 === 0) {
-            const captured = this.board[opponent][lastIndex];
-            this.kazan[player] += captured;
-            this.board[opponent][lastIndex] = 0;
+        if (stones === 0) {
+            setStatus("You cannot choose an empty pit.");
+            return;
+        }
+
+        // Pick up stones
+        pits[idx] = 0;
+
+        // We represent the board as 0..17:
+        // 0–8  : A pits (index 0..8)
+        // 9–17 : B pits (index 0..8)
+        let pos = player === "A" ? idx : 9 + idx;
+        let lastPos = pos;
+
+        while (stones > 0) {
+            pos = (pos + 1) % 18; // move to next pit
+
+            if (pos < 9) {
+                pitsA[pos]++;
+            } else {
+                pitsB[pos - 9]++;
+            }
+            lastPos = pos;
+            stones--;
+        }
+
+        // Capture rule (simplified standard rule):
+        // If last stone lands in opponent pit and that pit now has an even number,
+        // current player captures all stones in that pit.
+        if (currentPlayer === "A" && lastPos >= 9) {
+            const pitIndex = lastPos - 9;
+            if (pitsB[pitIndex] % 2 === 0) {
+                storeA += pitsB[pitIndex];
+                pitsB[pitIndex] = 0;
+            }
+        } else if (currentPlayer === "B" && lastPos < 9) {
+            const pitIndex = lastPos;
+            if (pitsA[pitIndex] % 2 === 0) {
+                storeB += pitsA[pitIndex];
+                pitsA[pitIndex] = 0;
+            }
         }
 
         // Switch turn
-        this.currentPlayer = opponent;
+        currentPlayer = currentPlayer === "A" ? "B" : "A";
 
-        // Check game over
-        this.checkGameOver();
-
-        // Update UI
-        this.onUpdate();
-        return true;
-    }
-}
-
-// ----- UI / DOM integration -----
-
-const rowTop = document.getElementById('row-top');
-const rowBottom = document.getElementById('row-bottom');
-const statusEl = document.getElementById('status');
-const scoreAEl = document.getElementById('scoreA');
-const scoreBEl = document.getElementById('scoreB');
-const storeAEl = document.getElementById('storeA');
-const storeBEl = document.getElementById('storeB');
-const resetBtn = document.getElementById('resetBtn');
-const container = document.querySelector('.container');
-
-// Create pit elements once
-function createPits() {
-    // Top row: Player B pits displayed right-to-left
-    rowTop.innerHTML = '';
-    for (let i = 8; i >= 0; i--) {
-        const pit = document.createElement('div');
-        pit.className = 'pit';
-        pit.dataset.player = '1';
-        pit.dataset.index = i.toString();
-        pit.appendChild(document.createElement('span'));
-        rowTop.appendChild(pit);
-    }
-
-    // Bottom row: Player A pits left-to-right
-    rowBottom.innerHTML = '';
-    for (let i = 0; i < 9; i++) {
-        const pit = document.createElement('div');
-        pit.className = 'pit';
-        pit.dataset.player = '0';
-        pit.dataset.index = i.toString();
-        pit.appendChild(document.createElement('span'));
-        rowBottom.appendChild(pit);
-    }
-}
-
-createPits();
-
-// Create game instance
-const game = new ToguzKorgoolGame(updateUI);
-
-function updateUI() {
-    // Update pit counts
-    const pits = document.querySelectorAll('.pit');
-    pits.forEach(pit => {
-        const player = Number(pit.dataset.player);
-        const index = Number(pit.dataset.index);
-        const count = game.board[player][index];
-        pit.querySelector('span').textContent = count;
-
-        // Enable only current player's pits with >1 korgool
-        if (player === game.currentPlayer && count > 1 && !game.isOver) {
-            pit.classList.remove('disabled');
-        } else {
-            pit.classList.add('disabled');
+        checkGameEnd();
+        if (!gameOver) {
+            updateView();
         }
-    });
-
-    // Update stores (just A/B and numbers, no "Kazan" text)
-    storeAEl.innerHTML = 'A<br>' + game.kazan[0];
-    storeBEl.innerHTML = 'B<br>' + game.kazan[1];
-
-    // Scores: show as "Player A: x", "Player B: x"
-    scoreAEl.textContent = 'Player A: ' + game.kazan[0];
-    scoreBEl.textContent = 'Player B: ' + game.kazan[1];
-
-    // Highlight current player
-    container.classList.remove('current-player-A', 'current-player-B');
-    if (!game.isOver) {
-        if (game.currentPlayer === 0) container.classList.add('current-player-A');
-        else container.classList.add('current-player-B');
     }
 
-    // Status text
-    if (game.isOver) {
-        if (game.winner === 'draw') {
-            statusEl.textContent = 'Game over: Draw!';
-        } else {
-            statusEl.textContent = `Game over: Player ${game.winner === 0 ? 'A' : 'B'} wins!`;
-        }
-    } else {
-        statusEl.textContent = `Turn: Player ${game.currentPlayer === 0 ? 'A' : 'B'}`;
+    // ---------- RESET ----------
+
+    function resetGame() {
+        pitsA = new Array(PITS_PER_SIDE).fill(START_STONES);
+        pitsB = new Array(PITS_PER_SIDE).fill(START_STONES);
+        storeA = 0;
+        storeB = 0;
+        currentPlayer = "A";
+        gameOver = false;
+        updateView();
     }
-}
 
-// Handle clicks on pits
-document.addEventListener('click', (e) => {
-    const pit = e.target.closest('.pit');
-    if (!pit) return;
+    resetBtn.addEventListener("click", resetGame);
 
-    const player = Number(pit.dataset.player);
-    const index = Number(pit.dataset.index);
-
-    game.makeMove(player, index);
-});
-
-// Reset button
-resetBtn.addEventListener('click', () => {
-    game.reset();
+    // Initial setup
+    createBoardDOM();
+    setStatus("Player A starts");
 });
