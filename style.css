@@ -192,8 +192,8 @@ h1 {
 
 /* reuse stone style, but slightly bigger looks nicer */
 .store-stones .stone {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
 }
 
 /* number at bottom of store */
