@@ -158,3 +158,9 @@ h1 {
 .btn:active {
     transform: scale(0.97);
 }
+
+/* Pit currently receiving a stone */
+.pit.sowing {
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.8);
+    transform: scale(1.08);
+}
