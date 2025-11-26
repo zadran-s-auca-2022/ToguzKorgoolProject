@@ -2,15 +2,15 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const PITS_PER_SIDE = 9;
-    const START_STONES = 9; // 9 pits × 9 korgools
+    const START_STONES = 9;
 
-    let pitsA = new Array(PITS_PER_SIDE).fill(START_STONES); // bottom row
-    let pitsB = new Array(PITS_PER_SIDE).fill(START_STONES); // top row
+    let pitsA = new Array(PITS_PER_SIDE).fill(START_STONES);
+    let pitsB = new Array(PITS_PER_SIDE).fill(START_STONES);
     let storeA = 0;
     let storeB = 0;
     let currentPlayer = "A";
     let gameOver = false;
-    let isAnimating = false; // block clicks during animation
+    let isAnimating = false;
 
     const rowTop = document.getElementById("row-top");
     const rowBottom = document.getElementById("row-bottom");
@@ -29,12 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
         pit.dataset.player = player;
         pit.dataset.index = idx;
 
-        // container for ball stones
         const stonesContainer = document.createElement("div");
         stonesContainer.className = "stones-container";
         pit.appendChild(stonesContainer);
 
-        // small label showing total number
         const countLabel = document.createElement("div");
         countLabel.className = "stone-count";
         pit.appendChild(countLabel);
@@ -43,70 +41,70 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function createBoardDOM() {
-        // Player B (top row) – reversed visually
         rowTop.innerHTML = "";
         for (let i = PITS_PER_SIDE - 1; i >= 0; i--) {
-            const pit = createPitElement("B", i);
-            rowTop.appendChild(pit);
+            rowTop.appendChild(createPitElement("B", i));
         }
 
-        // Player A (bottom row)
         rowBottom.innerHTML = "";
         for (let i = 0; i < PITS_PER_SIDE; i++) {
-            const pit = createPitElement("A", i);
-            rowBottom.appendChild(pit);
+            rowBottom.appendChild(createPitElement("A", i));
         }
 
-        // click handler on rows (use closest(".pit") because of inner elements)
         rowTop.addEventListener("click", onPitClick);
         rowBottom.addEventListener("click", onPitClick);
 
         updateView();
     }
 
-    // ---------- HELPERS ----------
+    // ---------- RENDER HELPERS ----------
 
     function setStatus(msg) {
         statusEl.textContent = msg;
     }
 
-    function renderPit(pit, stones, isActive) {
-        const container = pit.querySelector(".stones-container");
-        const label = pit.querySelector(".stone-count");
-
-        // update active highlight
-        pit.classList.toggle("active-player", isActive);
-
-        // clear old balls
+    function renderStones(container, count, isStore) {
         container.innerHTML = "";
-
-        // how many balls to draw (don’t overflow the pit visually)
-        const maxBalls = Math.min(stones, 20);
+        const maxBalls = isStore ? Math.min(count, 32) : Math.min(count, 12);
 
         for (let i = 0; i < maxBalls; i++) {
             const stone = document.createElement("div");
             stone.className = "stone";
             container.appendChild(stone);
         }
+    }
 
-        // show total number (even if we don’t draw all balls)
+    function renderPit(pit, stones, isActive) {
+        const container = pit.querySelector(".stones-container");
+        const label = pit.querySelector(".stone-count");
+
+        pit.classList.toggle("active-player", isActive);
+        renderStones(container, stones, false);
         label.textContent = stones;
+    }
+
+    function renderStore(storeEl, count, labelHtml) {
+        const labelEl = storeEl.querySelector(".store-label");
+        const stonesContainer = storeEl.querySelector(".store-stones");
+        const countEl = storeEl.querySelector(".store-count");
+
+        if (labelHtml) labelEl.innerHTML = labelHtml;
+        renderStones(stonesContainer, count, true);
+        countEl.textContent = count;
     }
 
     function updateView() {
         document.querySelectorAll(".pit").forEach(pit => {
             const player = pit.dataset.player;
-            const idx = parseInt(pit.dataset.index, 10);
+            const idx = parseInt(pit.dataset.index, 10, 10);
             const stones = player === "A" ? pitsA[idx] : pitsB[idx];
             const isActive = player === currentPlayer;
             renderPit(pit, stones, isActive);
         });
 
-        // stores
-        storeAEl.innerHTML = `A<br>Kazan<br>${storeA}`;
-        storeBEl.innerHTML = `B<br>Kazan<br>${storeB}`;
+        renderStore(storeAEl, storeA, "A<br>Kazan");
+        renderStore(storeBEl, storeB, "B<br>Kazan");
 
-        // scores (just kazan counts)
         scoreAEl.textContent = `Player A : ${storeA}`;
         scoreBEl.textContent = `Player B : ${storeB}`;
 
@@ -121,7 +119,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function checkGameEnd() {
         if (totalStones(pitsA) === 0 || totalStones(pitsB) === 0) {
-            // Remaining stones go to each player's kazan
             storeA += totalStones(pitsA);
             storeB += totalStones(pitsB);
             pitsA.fill(0);
@@ -141,7 +138,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---------- ANIMATION HELPERS ----------
 
-    // highlight pit that is currently receiving a stone
     function highlightPit(globalPos, on) {
         let selector;
         if (globalPos < 9) {
@@ -156,7 +152,6 @@ document.addEventListener("DOMContentLoaded", () => {
         else el.classList.remove("sowing");
     }
 
-    // path = [global positions 0..17] where stones will be dropped
     function sowAnimated(path, done) {
         let i = 0;
 
@@ -185,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateView();
 
             i++;
-            setTimeout(step, 180); // ms per stone
+            setTimeout(step, 180);
         }
 
         step();
@@ -196,7 +191,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function onPitClick(e) {
         if (gameOver || isAnimating) return;
 
-        // we might click on inner .stone, so find closest .pit
         const pitEl = e.target.closest(".pit");
         if (!pitEl) return;
 
@@ -216,9 +210,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // pick up stones
         pits[idx] = 0;
-        updateView(); // show empty pit immediately
+        updateView();
 
         const startPos = player === "A" ? idx : 9 + idx;
 

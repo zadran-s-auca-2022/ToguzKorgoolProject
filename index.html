@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Toguz Korgool Online</title>
     <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 <div class="container">
@@ -25,7 +26,11 @@
 
     <div class="board">
         <!-- Kazan / stores -->
-        <div class="store store-left" id="storeB">B<br>Kazan<br>0</div>
+        <div class="store store-left" id="storeB">
+            <div class="store-label">B<br>Kazan</div>
+            <div class="store-stones"></div>
+            <div class="store-count">0</div>
+        </div>
 
         <div class="pits-area">
             <!-- Top row: Player B -->
@@ -35,7 +40,11 @@
             <div class="row row-bottom" id="row-bottom"></div>
         </div>
 
-        <div class="store store-right" id="storeA">A<br>Kazan<br>0</div>
+        <div class="store store-right" id="storeA">
+            <div class="store-label">A<br>Kazan</div>
+            <div class="store-stones"></div>
+            <div class="store-count">0</div>
+        </div>
     </div>
 
     <div id="status" class="status"></div>
