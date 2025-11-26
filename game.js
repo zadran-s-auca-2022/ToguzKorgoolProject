@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let storeB = 0;
     let currentPlayer = "A";
     let gameOver = false;
-    let isAnimating = false; // <--- NEW: block clicks during animation
+    let isAnimating = false; // block clicks during animation
 
     const rowTop = document.getElementById("row-top");
     const rowBottom = document.getElementById("row-bottom");
@@ -23,27 +23,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---------- BOARD SETUP ----------
 
+    function createPitElement(player, idx) {
+        const pit = document.createElement("div");
+        pit.className = "pit " + (player === "A" ? "pit-bottom" : "pit-top");
+        pit.dataset.player = player;
+        pit.dataset.index = idx;
+
+        // container for ball stones
+        const stonesContainer = document.createElement("div");
+        stonesContainer.className = "stones-container";
+        pit.appendChild(stonesContainer);
+
+        // small label showing total number
+        const countLabel = document.createElement("div");
+        countLabel.className = "stone-count";
+        pit.appendChild(countLabel);
+
+        return pit;
+    }
+
     function createBoardDOM() {
         // Player B (top row) – reversed visually
         rowTop.innerHTML = "";
         for (let i = PITS_PER_SIDE - 1; i >= 0; i--) {
-            const pit = document.createElement("div");
-            pit.className = "pit pit-top";
-            pit.dataset.player = "B";
-            pit.dataset.index = i;
+            const pit = createPitElement("B", i);
             rowTop.appendChild(pit);
         }
 
         // Player A (bottom row)
         rowBottom.innerHTML = "";
         for (let i = 0; i < PITS_PER_SIDE; i++) {
-            const pit = document.createElement("div");
-            pit.className = "pit pit-bottom";
-            pit.dataset.player = "A";
-            pit.dataset.index = i;
+            const pit = createPitElement("A", i);
             rowBottom.appendChild(pit);
         }
 
+        // click handler on rows (use closest(".pit") because of inner elements)
         rowTop.addEventListener("click", onPitClick);
         rowBottom.addEventListener("click", onPitClick);
 
@@ -56,22 +70,43 @@ document.addEventListener("DOMContentLoaded", () => {
         statusEl.textContent = msg;
     }
 
+    function renderPit(pit, stones, isActive) {
+        const container = pit.querySelector(".stones-container");
+        const label = pit.querySelector(".stone-count");
+
+        // update active highlight
+        pit.classList.toggle("active-player", isActive);
+
+        // clear old balls
+        container.innerHTML = "";
+
+        // how many balls to draw (don’t overflow the pit visually)
+        const maxBalls = Math.min(stones, 20);
+
+        for (let i = 0; i < maxBalls; i++) {
+            const stone = document.createElement("div");
+            stone.className = "stone";
+            container.appendChild(stone);
+        }
+
+        // show total number (even if we don’t draw all balls)
+        label.textContent = stones;
+    }
+
     function updateView() {
-        // Update pits
         document.querySelectorAll(".pit").forEach(pit => {
             const player = pit.dataset.player;
             const idx = parseInt(pit.dataset.index, 10);
-
             const stones = player === "A" ? pitsA[idx] : pitsB[idx];
-            pit.textContent = stones;
-            pit.classList.toggle("active-player", player === currentPlayer);
+            const isActive = player === currentPlayer;
+            renderPit(pit, stones, isActive);
         });
 
-        // Update stores
+        // stores
         storeAEl.innerHTML = `A<br>Kazan<br>${storeA}`;
         storeBEl.innerHTML = `B<br>Kazan<br>${storeB}`;
 
-        // Update scores text (stores only)
+        // scores (just kazan counts)
         scoreAEl.textContent = `Player A : ${storeA}`;
         scoreBEl.textContent = `Player B : ${storeB}`;
 
@@ -110,10 +145,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function highlightPit(globalPos, on) {
         let selector;
         if (globalPos < 9) {
-            // Player A pits
             selector = `.pit-bottom[data-index="${globalPos}"]`;
         } else {
-            // Player B pits
             const idx = globalPos - 9;
             selector = `.pit-top[data-index="${idx}"]`;
         }
@@ -129,7 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function step() {
             if (i === path.length) {
-                // clear highlight from last pit
                 if (path.length > 0) {
                     highlightPit(path[path.length - 1], false);
                 }
@@ -139,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const pos = path[i];
 
-            // remove highlight from previous pit
             if (i > 0) {
                 highlightPit(path[i - 1], false);
             }
@@ -154,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateView();
 
             i++;
-            setTimeout(step, 180); // speed of animation (ms per stone)
+            setTimeout(step, 180); // ms per stone
         }
 
         step();
@@ -165,11 +196,12 @@ document.addEventListener("DOMContentLoaded", () => {
     function onPitClick(e) {
         if (gameOver || isAnimating) return;
 
-        const target = e.target;
-        if (!target.classList.contains("pit")) return;
+        // we might click on inner .stone, so find closest .pit
+        const pitEl = e.target.closest(".pit");
+        if (!pitEl) return;
 
-        const player = target.dataset.player;
-        const idx = parseInt(target.dataset.index, 10);
+        const player = pitEl.dataset.player;
+        const idx = parseInt(pitEl.dataset.index, 10);
 
         if (player !== currentPlayer) {
             setStatus(`It's Player ${currentPlayer}'s turn`);
@@ -184,14 +216,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // pick up stones from chosen pit
+        // pick up stones
         pits[idx] = 0;
-        updateView(); // immediately show empty pit
+        updateView(); // show empty pit immediately
 
-        // global board position (0..17)
         const startPos = player === "A" ? idx : 9 + idx;
 
-        // build sowing path
         const path = [];
         for (let s = 1; s <= stones; s++) {
             path.push((startPos + s) % 18);
@@ -202,9 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sowAnimated(path, () => {
             const lastPos = path[path.length - 1];
 
-            // Capture rule (simplified):
-            // If last stone lands in opponent pit and that pit now has an even number,
-            // current player captures all stones in that pit.
+            // simplified capture rule
             if (currentPlayer === "A" && lastPos >= 9) {
                 const pitIndex = lastPos - 9;
                 if (pitsB[pitIndex] % 2 === 0) {
@@ -219,7 +247,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Switch turn
             currentPlayer = currentPlayer === "A" ? "B" : "A";
 
             checkGameEnd();
