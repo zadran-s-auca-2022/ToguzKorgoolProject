@@ -62,8 +62,8 @@ h1 {
     justify-content: center;
     gap: 26px;
 
-    /* take about 65% of the screen height */
-    flex: 0 0 65vh;
+    /* take about 60% of the screen height */
+    flex: 0 0 60vh;
 }
 
 .pits-area {
@@ -76,16 +76,16 @@ h1 {
 
 .row {
     display: grid;
-    grid-template-columns: repeat(9, 78px);
+    grid-template-columns: repeat(9, 90px); /* wider cells */
     gap: 10px;
 }
 
 /* ----------- PITS (OVAL WOODEN CELLS) ----------- */
 
 .pit {
-    width: 78px;
-    height: 48px;
-    border-radius: 24px;
+    width: 90px;              /* bigger width */
+    height: 56px;             /* bigger height */
+    border-radius: 28px;      /* keep nice oval shape */
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -101,7 +101,7 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: 0.15s ease-in-out;
-    padding: 4px 7px 2px;
+    padding: 5px 8px 3px;
     box-sizing: border-box;
 }
 
@@ -150,7 +150,7 @@ h1 {
 
 .store {
     width: 135px;
-    height: 320px;  /* a bit smaller than before */
+    height: 300px;  /* slightly shorter */
     border-radius: 44px;
     border: 2px solid rgba(60,40,20,0.9);
 
