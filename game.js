@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentPlayer = "A";
     let gameOver = false;
     let isAnimating = false;
+    let moveHistory = [];
 
     const rowTop = document.getElementById("row-top");
     const rowBottom = document.getElementById("row-bottom");
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const storeBEl = document.getElementById("storeB");
     const statusEl = document.getElementById("status");
     const resetBtn = document.getElementById("resetBtn");
+    const historyListEl = document.getElementById("historyList");
 
     // ---------- BOARD SETUP ----------
 
@@ -116,6 +118,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function totalStones(arr) {
         return arr.reduce((a, b) => a + b, 0);
+    }
+
+    // ---------- HISTORY ----------
+
+    function addHistoryEntry(entry) {
+        moveHistory.push(entry);
+        if (!historyListEl) return;
+
+        const div = document.createElement("div");
+        div.className = "history-entry";
+
+        const lastSide = entry.lastPos < 9 ? "A" : "B";
+        const lastIndex = entry.lastPos < 9 ? entry.lastPos + 1 : entry.lastPos - 8; // B pits: 10..18 -> 1..9
+
+        let text = `${entry.moveNumber}. Player ${entry.player} – pit ${entry.pitIndex + 1}`;
+        text += ` (stones ${entry.stonesBefore} → moved ${entry.stonesMoved}, last: ${lastSide}${lastIndex}`;
+        if (entry.captured > 0) {
+            text += `, captured ${entry.captured}`;
+        }
+        text += `, A:${entry.storeA}, B:${entry.storeB})`;
+
+        div.textContent = text;
+        historyListEl.appendChild(div);
+        historyListEl.scrollTop = historyListEl.scrollHeight;
+    }
+
+    function clearHistory() {
+        moveHistory = [];
+        if (historyListEl) {
+            historyListEl.innerHTML = "";
+        }
     }
 
     // ---------- GAME END RULES ----------
@@ -224,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Global position of the chosen pit
+        const stonesBefore = stones;
         const startPos = player === "A" ? idx : 9 + idx;
 
         let stonesToSow;
@@ -247,25 +280,43 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         isAnimating = true;
+        const movePlayer = currentPlayer;
+        let captured = 0;
 
         sowAnimated(path, () => {
             const lastPos = path[path.length - 1];
 
             // simplified capture rule
-            if (currentPlayer === "A" && lastPos >= 9) {
+            if (movePlayer === "A" && lastPos >= 9) {
                 const pitIndex = lastPos - 9;
                 if (pitsB[pitIndex] % 2 === 0) {
+                    captured = pitsB[pitIndex];
                     storeA += pitsB[pitIndex];
                     pitsB[pitIndex] = 0;
                 }
-            } else if (currentPlayer === "B" && lastPos < 9) {
+            } else if (movePlayer === "B" && lastPos < 9) {
                 const pitIndex = lastPos;
                 if (pitsA[pitIndex] % 2 === 0) {
+                    captured = pitsA[pitIndex];
                     storeB += pitsA[pitIndex];
                     pitsA[pitIndex] = 0;
                 }
             }
 
+            // record history BEFORE switching currentPlayer
+            addHistoryEntry({
+                moveNumber: moveHistory.length + 1,
+                player: movePlayer,
+                pitIndex: idx,
+                stonesBefore,
+                stonesMoved: stonesToSow,
+                lastPos,
+                captured,
+                storeA,
+                storeB
+            });
+
+            // next player's turn
             currentPlayer = currentPlayer === "A" ? "B" : "A";
 
             checkGameEnd();
@@ -287,7 +338,9 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPlayer = "A";
         gameOver = false;
         isAnimating = false;
+        clearHistory();
         updateView();
+        setStatus("Player A starts");
     }
 
     resetBtn.addEventListener("click", resetGame);
