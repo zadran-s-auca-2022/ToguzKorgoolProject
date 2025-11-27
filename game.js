@@ -67,9 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderStones(container, count, isStore) {
         container.innerHTML = "";
-        // show many stones in store, but limit to avoid overflow
         const maxBalls = isStore ? Math.min(count, 80) : Math.min(count, 12);
-
         for (let i = 0; i < maxBalls; i++) {
             const stone = document.createElement("div");
             stone.className = "stone";
@@ -130,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
         div.className = "history-entry";
 
         const lastSide = entry.lastPos < 9 ? "A" : "B";
-        const lastIndex = entry.lastPos < 9 ? entry.lastPos + 1 : entry.lastPos - 8; // B pits: 10..18 -> 1..9
+        const lastIndex = entry.lastPos < 9 ? entry.lastPos + 1 : entry.lastPos - 8;
 
         let text = `${entry.moveNumber}. Player ${entry.player} – pit ${entry.pitIndex + 1}`;
         text += ` (stones ${entry.stonesBefore} → moved ${entry.stonesMoved}, last: ${lastSide}${lastIndex}`;
@@ -166,13 +164,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function checkGameEnd() {
-        // 1) immediate win as soon as someone reaches 82 or more
         if (storeA >= 82 || storeB >= 82) {
             finishGameByScore();
             return;
         }
-
-        // 2) if one side of the board is empty
         if (totalStones(pitsA) === 0 || totalStones(pitsB) === 0) {
             storeA += totalStones(pitsA);
             storeB += totalStones(pitsB);
@@ -198,7 +193,6 @@ document.addEventListener("DOMContentLoaded", () => {
         else el.classList.remove("sowing");
     }
 
-    // path = array of board positions (0..17)
     function sowAnimated(path, done) {
         let i = 0;
 
@@ -262,18 +256,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let stonesToSow;
         if (stones === 1) {
-            // RULE: if you have 1 stone, it moves to the NEXT pit
             pits[idx] = 0;
             stonesToSow = 1;
         } else {
-            // RULE: if you have more than 1, one stays, rest move
             pits[idx] = 1;
             stonesToSow = stones - 1;
         }
 
-        updateView(); // show updated starting pit
+        updateView();
 
-        // Sowing always starts from the NEXT pit
         const path = [];
         for (let s = 1; s <= stonesToSow; s++) {
             path.push((startPos + s) % 18);
@@ -286,7 +277,6 @@ document.addEventListener("DOMContentLoaded", () => {
         sowAnimated(path, () => {
             const lastPos = path[path.length - 1];
 
-            // simplified capture rule
             if (movePlayer === "A" && lastPos >= 9) {
                 const pitIndex = lastPos - 9;
                 if (pitsB[pitIndex] % 2 === 0) {
@@ -303,7 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // record history BEFORE switching currentPlayer
             addHistoryEntry({
                 moveNumber: moveHistory.length + 1,
                 player: movePlayer,
@@ -316,7 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 storeB
             });
 
-            // next player's turn
             currentPlayer = currentPlayer === "A" ? "B" : "A";
 
             checkGameEnd();
