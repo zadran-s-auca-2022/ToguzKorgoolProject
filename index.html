@@ -3,10 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <title>Toguz Korgool Online</title>
-    <link rel="stylesheet" href="style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash" class="splash">
+    <div class="splash-panel">
+        <div class="splash-logo">
+            <span>TK</span>
+        </div>
+        <h1 class="splash-title">Toguz Korgool</h1>
+        <p class="splash-subtitle">
+            Traditional Kyrgyz strategy game – web edition
+        </p>
+        <button id="splashStartBtn" class="btn splash-btn">Start Game</button>
+    </div>
+</div>
+
 <div class="container">
     <h1>Toguz Korgool</h1>
 
@@ -49,6 +64,41 @@
     <div class="buttons">
         <button id="resetBtn" class="btn">New Game (2 Players)</button>
         <button id="aiBtn" class="btn btn-secondary">Play vs Computer</button>
+        <button id="settingsBtn" class="btn btn-secondary">Settings ⚙</button>
+    </div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div id="settingsOverlay" class="settings-overlay hidden">
+    <div class="settings-panel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button id="settingsClose" class="settings-close">&times;</button>
+        </div>
+
+        <div class="settings-body">
+            <div class="settings-section">
+                <h3>Sound</h3>
+                <label class="toggle">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span>Enable game sounds</span>
+                </label>
+            </div>
+
+            <div class="settings-section">
+                <h3>Language</h3>
+                <select id="languageSelect">
+                    <option value="en">English</option>
+                    <option value="kg">Kyrgyz</option>
+                    <option value="ru">Russian</option>
+                </select>
+            </div>
+
+            <div class="settings-section">
+                <h3>Rules</h3>
+                <p id="rulesText" class="rules-text"></p>
+            </div>
+        </div>
     </div>
 </div>
 

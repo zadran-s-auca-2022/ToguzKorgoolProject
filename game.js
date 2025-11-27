@@ -12,7 +12,37 @@ document.addEventListener("DOMContentLoaded", () => {
     let gameOver = false;
     let isAnimating = false;
     let moveHistory = [];
-    let vsComputer = false; // if true, Player B is AI
+    let vsComputer = false;
+
+    // settings state
+    let soundOn = true;
+    let language = "en";
+    let audioCtx = null;
+
+    const RULES_TEXT = {
+        en: "Each player has 9 pits with 9 stones. On your turn, choose one of your own pits. " +
+            "If the pit has 1 stone, move that stone to the next pit. " +
+            "If it has more than 1 stone, leave 1 stone in the starting pit and sow the rest " +
+            "anti-clockwise across all pits. If your last stone lands in the opponent's pit and " +
+            "the number of stones there becomes even, you capture all stones from that pit into your Kazan. " +
+            "The player who collects at least 82 stones wins. If one side becomes empty, the remaining stones " +
+            "on the other side go to that player's Kazan and the game ends.",
+        kg: "Ар бир оюнчу 9 уячадан жана ар биринде 9 коргоолдон баштайт. " +
+            "Өз кезегиңизде өз тарабыңыздагы бир уячаны тандаңыз. " +
+            "Эгер уяча 1 коргоол болсо, аны кийинки уячага жылдырасыз. " +
+            "Эгер 1ден көп болсо, баштапкы уячага 1 коргоол калтырып, калганын саат жебесине каршы таратып чыгасыз. " +
+            "Акыркы коргоол каршы тараптын уячасына түшүп, ал жактагы коргоолдордун саны жуп болуп калса, " +
+            "анын баары сиздин казаныңызга өтөт. Ким 82 же андан көп коргоол топтосо, ошогочеут жеңет.",
+        ru: "У каждого игрока 9 лунок по 9 камней. В свой ход вы выбираете одну из своих лунок. " +
+            "Если в лунке 1 камень, вы переносите его в следующую лунку. " +
+            "Если камней больше, один камень остаётся в исходной лунке, а остальные вы раскладываете " +
+            "по кругу против часовой стрелки. Если последний камень попадает в лунку соперника и общее число " +
+            "камней там становится чётным, вы забираете все эти камни в свой казан. " +
+            "Побеждает игрок, который собрал не менее 82 камней. Если у одного игрока лунки пустые, " +
+            "оставшиеся камни переходят в казан второго, и игра заканчивается."
+    };
+
+    // ---------- DOM ELEMENTS ----------
 
     const rowTop = document.getElementById("row-top");
     const rowBottom = document.getElementById("row-bottom");
@@ -24,6 +54,59 @@ document.addEventListener("DOMContentLoaded", () => {
     const resetBtn = document.getElementById("resetBtn");
     const aiBtn = document.getElementById("aiBtn");
     const historyListEl = document.getElementById("historyList");
+
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsOverlay = document.getElementById("settingsOverlay");
+    const settingsClose = document.getElementById("settingsClose");
+    const soundToggle = document.getElementById("soundToggle");
+    const languageSelect = document.getElementById("languageSelect");
+    const rulesTextEl = document.getElementById("rulesText");
+
+    const splash = document.getElementById("splash");
+    const splashStartBtn = document.getElementById("splashStartBtn");
+
+    // ---------- AUDIO (simple beeps, no files) ----------
+
+    function initAudio() {
+        if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new Ctx();
+        }
+    }
+
+    function playTone(freq, duration) {
+        if (!soundOn) return;
+        if (!audioCtx) initAudio();
+        if (!audioCtx) return;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.frequency.value = freq;
+        osc.type = "sine";
+
+        const now = audioCtx.currentTime;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+    }
+
+    function playMoveSound() {
+        playTone(550, 0.12);
+    }
+
+    function playCaptureSound() {
+        playTone(320, 0.18);
+    }
+
+    function playGameOverSound() {
+        playTone(220, 0.3);
+    }
 
     // ---------- BOARD SETUP ----------
 
@@ -72,10 +155,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let maxBalls;
         if (isStore) {
-            // cap only in kazans visually – 82 is enough
             maxBalls = Math.min(count, 82);
         } else {
-            // in pits show ALL stones
             maxBalls = count;
         }
 
@@ -122,7 +203,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!gameOver) {
             if (vsComputer) {
-                setStatus(`Player ${currentPlayer === "A" ? "A (You)" : "B (Computer)"}'s turn`);
+                setStatus(
+                    `Player ${
+                        currentPlayer === "A" ? "A (You)" : "B (Computer)"
+                    }'s turn`
+                );
             } else {
                 setStatus(`Player ${currentPlayer}'s turn`);
             }
@@ -145,7 +230,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const lastSide = entry.lastPos < 9 ? "A" : "B";
         const lastIndex = entry.lastPos < 9 ? entry.lastPos + 1 : entry.lastPos - 8;
 
-        let text = `${entry.moveNumber}. Player ${entry.player} – pit ${entry.pitIndex + 1}`;
+        let text = `${entry.moveNumber}. Player ${entry.player} – pit ${
+            entry.pitIndex + 1
+        }`;
         text += ` (stones ${entry.stonesBefore} → moved ${entry.stonesMoved}, last: ${lastSide}${lastIndex}`;
         if (entry.captured > 0) {
             text += `, captured ${entry.captured}`;
@@ -168,6 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function finishGameByScore() {
         gameOver = true;
+        playGameOverSound();
         if (storeA > storeB) {
             setStatus(`Game over! Player A wins (${storeA} : ${storeB})`);
         } else if (storeB > storeA) {
@@ -254,7 +342,6 @@ document.addEventListener("DOMContentLoaded", () => {
         let stones = pits[idx];
 
         if (stones === 0) {
-            // Only show error for human moves
             if (!vsComputer || player === "A") {
                 setStatus("You cannot move from an empty pit.");
             }
@@ -273,6 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
             stonesToSow = stones - 1;
         }
 
+        playMoveSound();
         updateView();
 
         const path = [];
@@ -303,6 +391,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            if (captured > 0) {
+                playCaptureSound();
+            }
+
             addHistoryEntry({
                 moveNumber: moveHistory.length + 1,
                 player: movePlayer,
@@ -324,7 +416,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             isAnimating = false;
 
-            // Trigger AI move if needed
             if (!ended && vsComputer && currentPlayer === "B") {
                 setTimeout(aiMove, 400);
             }
@@ -349,7 +440,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // In vsComputer mode, human is only Player A
         if (vsComputer && player === "B") {
             return;
         }
@@ -422,7 +512,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // If no capture is possible, just take the first non-empty pit
         if (bestIdx === null) {
             for (let i = 0; i < PITS_PER_SIDE; i++) {
                 if (pitsB[i] > 0) {
@@ -439,7 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!vsComputer || gameOver || isAnimating || currentPlayer !== "B") return;
 
         const idx = aiChoosePit();
-        if (idx === null) return; // no legal moves (shouldn’t really happen)
+        if (idx === null) return;
 
         startMove("B", idx);
     }
@@ -474,7 +563,87 @@ document.addEventListener("DOMContentLoaded", () => {
         resetGame();
     });
 
-    // Initial setup
+    // ---------- SETTINGS LOGIC ----------
+
+    function updateRulesText() {
+        if (rulesTextEl) {
+            rulesTextEl.textContent = RULES_TEXT[language] || RULES_TEXT.en;
+        }
+    }
+
+    function loadPreferences() {
+        const s = localStorage.getItem("tk_sound");
+        if (s === "0") {
+            soundOn = false;
+            if (soundToggle) soundToggle.checked = false;
+        } else {
+            soundOn = true;
+            if (soundToggle) soundToggle.checked = true;
+        }
+
+        const lang = localStorage.getItem("tk_lang");
+        if (lang && RULES_TEXT[lang]) {
+            language = lang;
+        }
+        if (languageSelect) {
+            languageSelect.value = language;
+        }
+        updateRulesText();
+    }
+
+    if (settingsBtn && settingsOverlay && settingsClose) {
+        settingsBtn.addEventListener("click", () => {
+            settingsOverlay.classList.remove("hidden");
+        });
+
+        settingsClose.addEventListener("click", () => {
+            settingsOverlay.classList.add("hidden");
+        });
+
+        settingsOverlay.addEventListener("click", (e) => {
+            if (e.target === settingsOverlay) {
+                settingsOverlay.classList.add("hidden");
+            }
+        });
+    }
+
+    if (soundToggle) {
+        soundToggle.addEventListener("change", () => {
+            soundOn = soundToggle.checked;
+            localStorage.setItem("tk_sound", soundOn ? "1" : "0");
+            if (soundOn) {
+                initAudio();
+                playTone(880, 0.08);
+            }
+        });
+    }
+
+    if (languageSelect) {
+        languageSelect.addEventListener("change", () => {
+            language = languageSelect.value;
+            localStorage.setItem("tk_lang", language);
+            updateRulesText();
+        });
+    }
+
+    // ---------- SPLASH LOGIC ----------
+
+    function hideSplash() {
+        if (!splash) return;
+        splash.classList.add("hidden");
+        // keep element but invisible; board below is clickable
+    }
+
+    if (splash && splashStartBtn) {
+        splashStartBtn.addEventListener("click", hideSplash);
+        splash.addEventListener("click", (e) => {
+            if (e.target === splash) hideSplash();
+        });
+    }
+
+    // ---------- INITIALIZE ----------
+
     createBoardDOM();
-    setStatus("Player A starts");
+    loadPreferences();
+    resetGame();
 });
