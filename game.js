@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let gameOver = false;
     let isAnimating = false;
     let moveHistory = [];
+    let vsComputer = false; // if true, Player B is AI
 
     const rowTop = document.getElementById("row-top");
     const rowBottom = document.getElementById("row-bottom");
@@ -21,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const storeBEl = document.getElementById("storeB");
     const statusEl = document.getElementById("status");
     const resetBtn = document.getElementById("resetBtn");
+    const aiBtn = document.getElementById("aiBtn");
     const historyListEl = document.getElementById("historyList");
 
     // ---------- BOARD SETUP ----------
@@ -70,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let maxBalls;
         if (isStore) {
-            // cap only in kazans (visual) – 82 is enough
+            // cap only in kazans visually – 82 is enough
             maxBalls = Math.min(count, 82);
         } else {
             // in pits show ALL stones
@@ -119,7 +121,11 @@ document.addEventListener("DOMContentLoaded", () => {
         scoreBEl.textContent = `Player B : ${storeB}`;
 
         if (!gameOver) {
-            setStatus(`Player ${currentPlayer}'s turn`);
+            if (vsComputer) {
+                setStatus(`Player ${currentPlayer === "A" ? "A (You)" : "B (Computer)"}'s turn`);
+            } else {
+                setStatus(`Player ${currentPlayer}'s turn`);
+            }
         }
     }
 
@@ -165,7 +171,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (storeA > storeB) {
             setStatus(`Game over! Player A wins (${storeA} : ${storeB})`);
         } else if (storeB > storeA) {
-            setStatus(`Game over! Player B wins (${storeB} : ${storeA})`);
+            const label = vsComputer ? "Computer (B)" : "Player B";
+            setStatus(`Game over! ${label} wins (${storeB} : ${storeA})`);
         } else {
             setStatus(`Game over! It's a tie (${storeA} : ${storeB})`);
         }
@@ -175,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function checkGameEnd() {
         if (storeA >= 82 || storeB >= 82) {
             finishGameByScore();
-            return;
+            return true;
         }
         if (totalStones(pitsA) === 0 || totalStones(pitsB) === 0) {
             storeA += totalStones(pitsA);
@@ -183,7 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
             pitsA.fill(0);
             pitsB.fill(0);
             finishGameByScore();
+            return true;
         }
+        return false;
     }
 
     // ---------- ANIMATION HELPERS ----------
@@ -236,28 +245,20 @@ document.addEventListener("DOMContentLoaded", () => {
         step();
     }
 
-    // ---------- GAME LOGIC (CLICK + MOVE RULE) ----------
+    // ---------- MOVE EXECUTION (used by human + AI) ----------
 
-    function onPitClick(e) {
-        if (gameOver || isAnimating) return;
-
-        const pitEl = e.target.closest(".pit");
-        if (!pitEl) return;
-
-        const player = pitEl.dataset.player;
-        const idx = parseInt(pitEl.dataset.index, 10);
-
-        if (player !== currentPlayer) {
-            setStatus(`It's Player ${currentPlayer}'s turn`);
-            return;
-        }
+    function startMove(player, idx) {
+        if (gameOver || isAnimating) return false;
 
         const pits = player === "A" ? pitsA : pitsB;
         let stones = pits[idx];
 
         if (stones === 0) {
-            setStatus("You cannot move from an empty pit.");
-            return;
+            // Only show error for human moves
+            if (!vsComputer || player === "A") {
+                setStatus("You cannot move from an empty pit.");
+            }
+            return false;
         }
 
         const stonesBefore = stones;
@@ -265,11 +266,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let stonesToSow;
         if (stones === 1) {
-            // 1 stone: move it to the next pit
             pits[idx] = 0;
             stonesToSow = 1;
         } else {
-            // more than 1: leave 1, move the rest
             pits[idx] = 1;
             stonesToSow = stones - 1;
         }
@@ -282,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         isAnimating = true;
-        const movePlayer = currentPlayer;
+        const movePlayer = player;
         let captured = 0;
 
         sowAnimated(path, () => {
@@ -318,13 +317,131 @@ document.addEventListener("DOMContentLoaded", () => {
 
             currentPlayer = currentPlayer === "A" ? "B" : "A";
 
-            checkGameEnd();
-            if (!gameOver) {
+            const ended = checkGameEnd();
+            if (!ended) {
                 updateView();
             }
 
             isAnimating = false;
+
+            // Trigger AI move if needed
+            if (!ended && vsComputer && currentPlayer === "B") {
+                setTimeout(aiMove, 400);
+            }
         });
+
+        return true;
+    }
+
+    // ---------- HUMAN CLICK HANDLER ----------
+
+    function onPitClick(e) {
+        if (gameOver || isAnimating) return;
+
+        const pitEl = e.target.closest(".pit");
+        if (!pitEl) return;
+
+        const player = pitEl.dataset.player;
+        const idx = parseInt(pitEl.dataset.index, 10);
+
+        if (player !== currentPlayer) {
+            setStatus(`It's Player ${currentPlayer}'s turn`);
+            return;
+        }
+
+        // In vsComputer mode, human is only Player A
+        if (vsComputer && player === "B") {
+            return;
+        }
+
+        startMove(player, idx);
+    }
+
+    // ---------- AI (Player B) ----------
+
+    function simulateMove(player, idx) {
+        const pitsA_copy = pitsA.slice();
+        const pitsB_copy = pitsB.slice();
+        let storeA_copy = storeA;
+        let storeB_copy = storeB;
+
+        const pits = player === "A" ? pitsA_copy : pitsB_copy;
+        let stones = pits[idx];
+        if (stones === 0) return null;
+
+        const startPos = player === "A" ? idx : 9 + idx;
+
+        let stonesToSow;
+        if (stones === 1) {
+            pits[idx] = 0;
+            stonesToSow = 1;
+        } else {
+            pits[idx] = 1;
+            stonesToSow = stones - 1;
+        }
+
+        let lastPos = startPos;
+        for (let s = 1; s <= stonesToSow; s++) {
+            lastPos = (startPos + s) % 18;
+            if (lastPos < 9) {
+                pitsA_copy[lastPos]++;
+            } else {
+                pitsB_copy[lastPos - 9]++;
+            }
+        }
+
+        let captured = 0;
+        if (player === "A" && lastPos >= 9) {
+            const pitIndex = lastPos - 9;
+            if (pitsB_copy[pitIndex] % 2 === 0) {
+                captured = pitsB_copy[pitIndex];
+                storeA_copy += pitsB_copy[pitIndex];
+            }
+        } else if (player === "B" && lastPos < 9) {
+            const pitIndex = lastPos;
+            if (pitsA_copy[pitIndex] % 2 === 0) {
+                captured = pitsA_copy[pitIndex];
+                storeB_copy += pitsA_copy[pitIndex];
+            }
+        }
+
+        return { captured, lastPos };
+    }
+
+    function aiChoosePit() {
+        let bestIdx = null;
+        let bestCaptured = -1;
+
+        for (let i = 0; i < PITS_PER_SIDE; i++) {
+            if (pitsB[i] === 0) continue;
+            const result = simulateMove("B", i);
+            if (!result) continue;
+            if (result.captured > bestCaptured) {
+                bestCaptured = result.captured;
+                bestIdx = i;
+            }
+        }
+
+        // If no capture is possible, just take the first non-empty pit
+        if (bestIdx === null) {
+            for (let i = 0; i < PITS_PER_SIDE; i++) {
+                if (pitsB[i] > 0) {
+                    bestIdx = i;
+                    break;
+                }
+            }
+        }
+
+        return bestIdx;
+    }
+
+    function aiMove() {
+        if (!vsComputer || gameOver || isAnimating || currentPlayer !== "B") return;
+
+        const idx = aiChoosePit();
+        if (idx === null) return; // no legal moves (shouldn’t really happen)
+
+        startMove("B", idx);
     }
 
     // ---------- RESET ----------
@@ -339,10 +456,23 @@ document.addEventListener("DOMContentLoaded", () => {
         isAnimating = false;
         clearHistory();
         updateView();
-        setStatus("Player A starts");
+
+        if (vsComputer) {
+            setStatus("Player A (You) vs Computer (B) – Player A starts");
+        } else {
+            setStatus("Player A starts");
+        }
     }
 
-    resetBtn.addEventListener("click", resetGame);
+    resetBtn.addEventListener("click", () => {
+        vsComputer = false;
+        resetGame();
+    });
+
+    aiBtn.addEventListener("click", () => {
+        vsComputer = true;
+        resetGame();
+    });
 
     // Initial setup
     createBoardDOM();

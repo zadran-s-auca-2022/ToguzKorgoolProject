@@ -63,7 +63,7 @@ h1 {
     justify-content: center;
     gap: 24px;
 
-    flex: 0 0 60vh; /* takes 60% of screen height */
+    flex: 0 0 58vh; /* takes ~58% of screen height */
 }
 
 .pits-area {
@@ -76,16 +76,16 @@ h1 {
 
 .row {
     display: grid;
-    grid-template-columns: repeat(9, 95px); /* BIGGER rooms */
+    grid-template-columns: repeat(9, 105px); /* medium pits */
     gap: 10px;
 }
 
 /* ----------- PITS (OVAL WOODEN CELLS) ----------- */
 
 .pit {
-    width: 95px;               /* bigger width */
-    height: 80px;              /* bigger height */
-    border-radius: 28px;
+    width: 105px;
+    height: 72px;
+    border-radius: 32px;
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -101,7 +101,7 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: 0.15s ease-in-out;
-    padding: 6px 9px 3px;
+    padding: 8px 10px 4px;
     box-sizing: border-box;
 }
 
@@ -124,7 +124,8 @@ h1 {
 /* stones inside pits */
 .stones-container {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* 5 columns to pack stones nicely */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     width: 100%;
     flex: 1;
@@ -150,7 +151,7 @@ h1 {
 
 .store {
     width: 130px;
-    height: 290px;  /* a bit shorter to make room for bigger pits */
+    height: 290px;
     border-radius: 44px;
     border: 2px solid rgba(60,40,20,0.9);
 
@@ -239,9 +240,15 @@ h1 {
     text-align: center;
 }
 
+.buttons {
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 /* BUTTONS */
 .btn {
-    margin-top: 6px;
     padding: 8px 20px;
     font-size: 15px;
     background: #1976d2;
@@ -260,6 +267,14 @@ h1 {
     transform: scale(0.97);
 }
 
+.btn-secondary {
+    background: #555;
+}
+
+.btn-secondary:hover {
+    background: #666;
+}
+
 /* Pit currently receiving a stone */
 .pit.sowing {
     box-shadow:
@@ -268,4 +283,3 @@ h1 {
         0 0 18px rgba(255, 255, 255, 0.9);
     transform: scale(1.05);
 }
-
