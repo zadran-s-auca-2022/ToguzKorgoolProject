@@ -67,7 +67,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderStones(container, count, isStore) {
         container.innerHTML = "";
-        const maxBalls = isStore ? Math.min(count, 80) : Math.min(count, 12);
+
+        let maxBalls;
+        if (isStore) {
+            // cap only in kazans (visual) – 82 is enough
+            maxBalls = Math.min(count, 82);
+        } else {
+            // in pits show ALL stones
+            maxBalls = count;
+        }
+
         for (let i = 0; i < maxBalls; i++) {
             const stone = document.createElement("div");
             stone.className = "stone";
@@ -256,9 +265,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let stonesToSow;
         if (stones === 1) {
+            // 1 stone: move it to the next pit
             pits[idx] = 0;
             stonesToSow = 1;
         } else {
+            // more than 1: leave 1, move the rest
             pits[idx] = 1;
             stonesToSow = stones - 1;
         }
