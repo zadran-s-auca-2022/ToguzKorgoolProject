@@ -89,15 +89,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const now = audioCtx.currentTime;
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
         osc.start(now);
         osc.stop(now + duration + 0.02);
     }
 
-    function playMoveSound() {
-        playTone(550, 0.12);
+    // one short “tick” per stone
+    function playStoneSound() {
+        playTone(650, 0.07);
     }
 
     function playCaptureSound() {
@@ -313,6 +314,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const pos = path[i];
 
+            // sound for EACH stone
+            playStoneSound();
+
             if (i > 0) {
                 highlightPit(path[i - 1], false);
             }
@@ -360,7 +364,8 @@ document.addEventListener("DOMContentLoaded", () => {
             stonesToSow = stones - 1;
         }
 
-        playMoveSound();
+        // we no longer play a single move sound here;
+        // instead we play one sound per stone in sowAnimated
         updateView();
 
         const path = [];
@@ -631,7 +636,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function hideSplash() {
         if (!splash) return;
         splash.classList.add("hidden");
-        // keep element but invisible; board below is clickable
     }
 
     if (splash && splashStartBtn) {
