@@ -6,15 +6,16 @@ body {
     font-family: Arial, sans-serif;
     background: #111;
     color: #eee;
-    overflow: hidden; /* no scrolling */
+    /* allow vertical scroll on very small screens, but no horizontal cut-off */
+    overflow-x: hidden;
 }
 
 .container {
-    height: 100vh;          /* exactly one screen */
+    height: 100vh;          /* one screen, but content can scroll inside */
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 8px 20px 8px;
+    padding: 8px 12px 8px;
     box-sizing: border-box;
 
     display: flex;
@@ -25,8 +26,8 @@ body {
 /* ----------- TITLE + SCORES ----------- */
 
 h1 {
-    margin: 2px 0 6px;
-    font-size: 32px;
+    margin: 4px 0 6px;
+    font-size: clamp(22px, 3vw, 32px);
     letter-spacing: 1px;
 }
 
@@ -36,7 +37,7 @@ h1 {
     display: flex;
     justify-content: space-between;
     margin-bottom: 4px;
-    font-size: 18px;
+    font-size: clamp(14px, 1.7vw, 18px);
 }
 
 .score {
@@ -50,7 +51,7 @@ h1 {
     width: 100%;
     max-width: 1300px;
     margin: 4px auto 0;
-    padding: 18px 32px;
+    padding: clamp(10px, 2vh, 18px) clamp(12px, 4vw, 32px);
     border-radius: 50px;
     background: linear-gradient(145deg, #c68b4d, #9c6a34);
     box-shadow:
@@ -61,31 +62,33 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 24px;
+    gap: clamp(10px, 2vw, 24px);
 
-    flex: 0 0 58vh; /* takes ~58% of screen height */
+    /* let height be determined by content so it can shrink on small windows */
+    flex: 0 0 auto;
 }
 
 .pits-area {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: clamp(8px, 1.5vh, 14px);
 }
 
 /* ----------- PIT ROWS ----------- */
 
 .row {
     display: grid;
-    grid-template-columns: repeat(9, 105px); /* medium pits */
-    gap: 10px;
+    /* responsive pit width: smaller on narrow screens, larger on wide */
+    grid-template-columns: repeat(9, minmax(50px, 8vw));
+    gap: clamp(6px, 1vw, 10px);
 }
 
 /* ----------- PITS (OVAL WOODEN CELLS) ----------- */
 
 .pit {
-    width: 105px;
-    height: 72px;
-    border-radius: 32px;
+    width: 100%;                  /* take column width */
+    aspect-ratio: 7 / 4;          /* oval proportion, height adjusts automatically */
+    border-radius: 999px;
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -101,12 +104,12 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: 0.15s ease-in-out;
-    padding: 8px 10px 4px;
+    padding: 6px 8px 3px;
     box-sizing: border-box;
 }
 
 .pit:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow:
         inset 0 3px 5px rgba(255,255,255,0.4),
         inset 0 -4px 6px rgba(0,0,0,0.45),
@@ -124,7 +127,7 @@ h1 {
 /* stones inside pits */
 .stones-container {
     display: grid;
-    /* 5 columns to pack stones nicely */
+    /* 5 columns to pack stones; auto shrinks with pit width */
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     width: 100%;
@@ -134,15 +137,15 @@ h1 {
 }
 
 .stone {
-    width: 9px;
-    height: 9px;
+    width: clamp(5px, 0.7vw, 9px);
+    height: clamp(5px, 0.7vw, 9px);
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #f7f1d0, #3b2a19);
     box-shadow: 0 0 2px rgba(0,0,0,0.8);
 }
 
 .stone-count {
-    font-size: 11px;
+    font-size: clamp(9px, 1.1vw, 11px);
     opacity: 0.9;
     margin-top: 2px;
 }
@@ -150,8 +153,8 @@ h1 {
 /* ----------- STORES / KAZANS ----------- */
 
 .store {
-    width: 130px;
-    height: 290px;
+    width: clamp(70px, 9vw, 130px);
+    height: clamp(190px, 40vh, 290px);
     border-radius: 44px;
     border: 2px solid rgba(60,40,20,0.9);
 
@@ -163,12 +166,12 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 8px 8px 6px;
+    padding: 8px 6px 6px;
     box-sizing: border-box;
 }
 
 .store-label {
-    font-size: 14px;
+    font-size: clamp(11px, 1.4vw, 14px);
     font-weight: bold;
     text-align: center;
     margin-bottom: 4px;
@@ -186,13 +189,13 @@ h1 {
 }
 
 .store-stones .stone {
-    width: 7px;
-    height: 7px;
+    width: clamp(4px, 0.55vw, 7px);
+    height: clamp(4px, 0.55vw, 7px);
 }
 
 .store-count {
     margin-top: 3px;
-    font-size: 12px;
+    font-size: clamp(10px, 1.3vw, 12px);
     font-weight: bold;
 }
 
@@ -201,16 +204,15 @@ h1 {
 .history-container {
     position: absolute;
     left: 50%;
-    bottom: 10px;
+    bottom: 8px;
     transform: translateX(-50%);
-    width: 520px;
-    max-width: 90%;
+    width: min(520px, 90%);
     background: rgba(0, 0, 0, 0.6);
     color: #f5f5f5;
     border-radius: 12px;
     padding: 6px 10px;
     box-sizing: border-box;
-    font-size: 12px;
+    font-size: clamp(10px, 1.2vw, 12px);
     box-shadow: 0 0 8px rgba(0,0,0,0.7);
 }
 
@@ -235,7 +237,7 @@ h1 {
 
 .status {
     margin-top: 6px;
-    font-size: 17px;
+    font-size: clamp(14px, 1.8vw, 17px);
     min-height: 22px;
     text-align: center;
 }
@@ -245,12 +247,13 @@ h1 {
     display: flex;
     gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* BUTTONS */
 .btn {
-    padding: 8px 20px;
-    font-size: 15px;
+    padding: 8px 18px;
+    font-size: clamp(13px, 1.7vw, 15px);
     background: #1976d2;
     color: white;
     border: none;
@@ -282,4 +285,17 @@ h1 {
         inset 0 -4px 6px rgba(0,0,0,0.45),
         0 0 18px rgba(255, 255, 255, 0.9);
     transform: scale(1.05);
+}
+
+/* ----------- SMALL SCREEN TWEAKS ----------- */
+
+@media (max-width: 800px) {
+    .board {
+        padding: 10px 10px;
+        border-radius: 36px;
+    }
+
+    .store {
+        border-radius: 32px;
+    }
 }
