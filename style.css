@@ -6,7 +6,7 @@ body {
     font-family: Arial, sans-serif;
     background: #111;
     color: #eee;
-    overflow: hidden; /* avoid scrolling */
+    overflow: hidden; /* no scrolling */
 }
 
 .container {
@@ -14,7 +14,7 @@ body {
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 10px 20px 10px;
+    padding: 8px 20px 8px;
     box-sizing: border-box;
 
     display: flex;
@@ -25,7 +25,7 @@ body {
 /* ----------- TITLE + SCORES ----------- */
 
 h1 {
-    margin: 4px 0 6px;
+    margin: 2px 0 6px;
     font-size: 32px;
     letter-spacing: 1px;
 }
@@ -49,7 +49,7 @@ h1 {
     width: 100%;
     max-width: 1300px;
     margin: 4px auto 0;
-    padding: 20px 36px;
+    padding: 18px 32px;
     border-radius: 50px;
     background: linear-gradient(145deg, #c68b4d, #9c6a34);
     box-shadow:
@@ -60,10 +60,9 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 26px;
+    gap: 24px;
 
-    /* take about 60% of the screen height */
-    flex: 0 0 60vh;
+    flex: 0 0 60vh; /* takes 60% of screen height */
 }
 
 .pits-area {
@@ -76,16 +75,16 @@ h1 {
 
 .row {
     display: grid;
-    grid-template-columns: repeat(9, 90px); /* wider cells */
+    grid-template-columns: repeat(9, 95px); /* BIGGER rooms */
     gap: 10px;
 }
 
 /* ----------- PITS (OVAL WOODEN CELLS) ----------- */
 
 .pit {
-    width: 90px;              /* bigger width */
-    height: 56px;             /* bigger height */
-    border-radius: 28px;      /* keep nice oval shape */
+    width: 95px;               /* bigger width */
+    height: 60px;              /* bigger height */
+    border-radius: 28px;
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -101,7 +100,7 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: 0.15s ease-in-out;
-    padding: 5px 8px 3px;
+    padding: 6px 9px 3px;
     box-sizing: border-box;
 }
 
@@ -141,16 +140,16 @@ h1 {
 }
 
 .stone-count {
-    font-size: 10px;
+    font-size: 11px;
     opacity: 0.9;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 
 /* ----------- STORES / KAZANS ----------- */
 
 .store {
-    width: 135px;
-    height: 300px;  /* slightly shorter */
+    width: 130px;
+    height: 290px;  /* a bit shorter to make room for bigger pits */
     border-radius: 44px;
     border: 2px solid rgba(60,40,20,0.9);
 
@@ -162,7 +161,7 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px 8px 6px;
+    padding: 8px 8px 6px;
     box-sizing: border-box;
 }
 
@@ -170,7 +169,7 @@ h1 {
     font-size: 14px;
     font-weight: bold;
     text-align: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 /* stones inside kazans */
