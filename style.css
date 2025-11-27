@@ -6,42 +6,37 @@ body {
     font-family: Arial, sans-serif;
     background: #111;
     color: #eee;
+    overflow: hidden; /* avoid scrolling */
 }
 
 .container {
-    min-height: 100vh;
+    height: 100vh;          /* exactly one screen */
     width: 100%;
-    max-width: 1400px;      /* big central area */
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 30px 20px 40px;
+    padding: 10px 20px 10px;
+    box-sizing: border-box;
+
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
+/* ----------- TITLE + SCORES ----------- */
+
 h1 {
-    margin-top: 0;
-    font-size: 36px;
+    margin: 4px 0 6px;
+    font-size: 32px;
     letter-spacing: 1px;
 }
-
-.info {
-    margin-bottom: 18px;
-    font-size: 15px;
-    color: #ccc;
-    line-height: 1.4;
-    text-align: center;
-}
-
-/* ----------- SCORE SECTION ----------- */
 
 .scores {
     width: 100%;
     max-width: 1300px;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 20px;
+    margin-bottom: 4px;
+    font-size: 18px;
 }
 
 .score {
@@ -52,42 +47,45 @@ h1 {
 
 .board {
     width: 100%;
-    max-width: 1300px;             /* almost whole screen */
-    margin: 20px auto 0;
-    padding: 32px 44px;
-    border-radius: 55px;
+    max-width: 1300px;
+    margin: 4px auto 0;
+    padding: 20px 36px;
+    border-radius: 50px;
     background: linear-gradient(145deg, #c68b4d, #9c6a34);
     box-shadow:
         inset 0 4px 10px rgba(255,255,255,0.4),
         inset 0 -6px 14px rgba(0,0,0,0.6),
-        0 18px 26px rgba(0,0,0,0.8);
+        0 14px 22px rgba(0,0,0,0.8);
 
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 28px;
+    gap: 26px;
+
+    /* take about 65% of the screen height */
+    flex: 0 0 65vh;
 }
 
 .pits-area {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
 }
 
 /* ----------- PIT ROWS ----------- */
 
 .row {
     display: grid;
-    grid-template-columns: repeat(9, 82px); /* wider pits */
-    gap: 12px;
+    grid-template-columns: repeat(9, 78px);
+    gap: 10px;
 }
 
 /* ----------- PITS (OVAL WOODEN CELLS) ----------- */
 
 .pit {
-    width: 82px;
-    height: 54px;
-    border-radius: 26px;
+    width: 78px;
+    height: 48px;
+    border-radius: 24px;
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -103,7 +101,7 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: 0.15s ease-in-out;
-    padding: 5px 8px 3px 8px;
+    padding: 4px 7px 2px;
     box-sizing: border-box;
 }
 
@@ -135,25 +133,25 @@ h1 {
 }
 
 .stone {
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #f7f1d0, #3b2a19);
     box-shadow: 0 0 2px rgba(0,0,0,0.8);
 }
 
 .stone-count {
-    font-size: 11px;
+    font-size: 10px;
     opacity: 0.9;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 /* ----------- STORES / KAZANS ----------- */
 
 .store {
-    width: 150px;             /* wider */
-    height: 380px;            /* taller so stones fit */
-    border-radius: 50px;
+    width: 135px;
+    height: 320px;  /* a bit smaller than before */
+    border-radius: 44px;
     border: 2px solid rgba(60,40,20,0.9);
 
     background: radial-gradient(circle at 30% 20%, #f2c48a, #b4773f);
@@ -164,54 +162,53 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 10px 8px;
+    padding: 10px 8px 6px;
     box-sizing: border-box;
 }
 
 .store-label {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
-/* stones inside kazans: more columns so height is smaller */
+/* stones inside kazans */
 .store-stones {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr)); /* 7 columns */
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 2px;
     width: 100%;
     align-content: flex-start;
     justify-items: center;
 }
 
-/* slightly smaller stones inside stores */
 .store-stones .stone {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
 }
 
 .store-count {
-    margin-top: 4px;
-    font-size: 13px;
+    margin-top: 3px;
+    font-size: 12px;
     font-weight: bold;
 }
 
 /* ----------- STATUS + BUTTONS ----------- */
 
 .status {
-    margin-top: 20px;
-    font-size: 18px;
+    margin-top: 6px;
+    font-size: 17px;
     min-height: 22px;
     text-align: center;
 }
 
 /* BUTTONS */
 .btn {
-    margin-top: 12px;
-    padding: 10px 22px;
-    font-size: 16px;
+    margin-top: 6px;
+    padding: 8px 20px;
+    font-size: 15px;
     background: #1976d2;
     color: white;
     border: none;
