@@ -14,6 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let moveHistory = [];
     let vsComputer = false;
 
+    // Tuz (soled) pits:
+    // tuzA: index (0-8) of pit on B's side that belongs to A
+    // tuzB: index (0-8) of pit on A's side that belongs to B
+    let tuzA = null;
+    let tuzB = null;
+
     // settings state
     let soundOn = true;
     let language = "en";
@@ -25,19 +31,26 @@ document.addEventListener("DOMContentLoaded", () => {
             "If it has more than 1 stone, leave 1 stone in the starting pit and sow the rest " +
             "anti-clockwise across all pits. If your last stone lands in the opponent's pit and " +
             "the number of stones there becomes even, you capture all stones from that pit into your Kazan. " +
+            "There is also a special 'tuz' (soled) pit: if your last stone lands in an opponent's pit and it becomes exactly 3, " +
+            "under certain conditions that pit becomes your tuz and all future stones landing there are yours. " +
             "The player who collects at least 82 stones wins. If one side becomes empty, the remaining stones " +
             "on the other side go to that player's Kazan and the game ends.",
         kg: "Ар бир оюнчу 9 уячадан жана ар биринде 9 коргоолдон баштайт. " +
             "Өз кезегиңизде өз тарабыңыздагы бир уячаны тандаңыз. " +
             "Эгер уяча 1 коргоол болсо, аны кийинки уячага жылдырасыз. " +
             "Эгер 1ден көп болсо, баштапкы уячага 1 коргоол калтырып, калганын саат жебесине каршы таратып чыгасыз. " +
-            "Акыркы коргоол каршы тараптын уячасына түшүп, ал жактагы коргоолдордун саны жуп болуп калса, " +
-            "анын баары сиздин казаныңызга өтөт. Ким 82 же андан көп коргоол топтосо, ошогочеут жеңет.",
+            "Эгер акыркы коргоол каршы тараптын уячасына түшүп, ал жактагы коргоолдордун саны жуп болсо, " +
+            "анын баары сиздин казаныңызга өтөт. Ошондой эле 'түз' деген өзгөчө уяча бар: эгер акыркы коргоол " +
+            "каршы тараптын уячасына түшүп, ал жакта так 3 коргоол болсо жана эрежелерге каршы келбесе, ал уяча сиздин түзүңүз болуп калат " +
+            "жана андан ары түшкөн бардык коргоолдор сизге таандык болот. Ким 82 же андан көп коргоол топтосо, ошол жеңет. " +
+            "Эгер бир тараптын бардык уячалары бош калса, экинчи тараптагы калган коргоолдор ошол оюнчунун казанына өтөт.",
         ru: "У каждого игрока 9 лунок по 9 камней. В свой ход вы выбираете одну из своих лунок. " +
             "Если в лунке 1 камень, вы переносите его в следующую лунку. " +
             "Если камней больше, один камень остаётся в исходной лунке, а остальные вы раскладываете " +
             "по кругу против часовой стрелки. Если последний камень попадает в лунку соперника и общее число " +
             "камней там становится чётным, вы забираете все эти камни в свой казан. " +
+            "Есть также особая лунка — 'тёз' (tuz): если последний камень попадает в лунку соперника и там становится ровно 3 камня, " +
+            "при соблюдении ограничений эта лунка становится вашим тёзом, и все последующие камни в ней — ваши. " +
             "Побеждает игрок, который собрал не менее 82 камней. Если у одного игрока лунки пустые, " +
             "оставшиеся камни переходят в казан второго, и игра заканчивается."
     };
@@ -117,6 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
         pit.dataset.player = player;
         pit.dataset.index = idx;
 
+        // Number label inside pit
+        const num = document.createElement("div");
+        num.className = "pit-number";
+        const displayNumber = player === "A" ? idx + 1 : (PITS_PER_SIDE - idx);
+        num.textContent = displayNumber;
+        pit.appendChild(num);
+
         const stonesContainer = document.createElement("div");
         stonesContainer.className = "stones-container";
         pit.appendChild(stonesContainer);
@@ -193,6 +213,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const idx = parseInt(pit.dataset.index, 10);
             const stones = player === "A" ? pitsA[idx] : pitsB[idx];
             const isActive = player === currentPlayer;
+
+            // mark tuz pits
+            let isTuz = false;
+            if (player === "A" && tuzB !== null && tuzB === idx) {
+                isTuz = true;
+            }
+            if (player === "B" && tuzA !== null && tuzA === idx) {
+                isTuz = true;
+            }
+            pit.classList.toggle("tuz", isTuz);
+
             renderPit(pit, stones, isActive);
         });
 
@@ -237,6 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
         text += ` (stones ${entry.stonesBefore} → moved ${entry.stonesMoved}, last: ${lastSide}${lastIndex}`;
         if (entry.captured > 0) {
             text += `, captured ${entry.captured}`;
+        }
+        if (entry.tuzCreated) {
+            text += `, TUZ at ${entry.tuzCreated}`;
         }
         text += `, A:${entry.storeA}, B:${entry.storeB})`;
 
@@ -284,6 +318,29 @@ document.addEventListener("DOMContentLoaded", () => {
         return false;
     }
 
+    // ---------- TUZ HELPERS ----------
+
+    function autoCollectIfOnExistingTuz(globalPos) {
+        // If a stone lands in an already existing tuz, move stones to owner
+        if (globalPos < 9) {
+            // A side: could be tuzB
+            const idx = globalPos;
+            if (tuzB !== null && tuzB === idx && pitsA[idx] > 0) {
+                const taken = pitsA[idx];
+                storeB += taken;
+                pitsA[idx] = 0;
+            }
+        } else {
+            // B side: could be tuzA
+            const idx = globalPos - 9;
+            if (tuzA !== null && tuzA === idx && pitsB[idx] > 0) {
+                const taken = pitsB[idx];
+                storeA += taken;
+                pitsB[idx] = 0;
+            }
+        }
+    }
+
     // ---------- ANIMATION HELPERS ----------
 
     function highlightPit(globalPos, on) {
@@ -314,7 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const pos = path[i];
 
-            // sound for EACH stone
+            // sound for each stone
             playStoneSound();
 
             if (i > 0) {
@@ -326,6 +383,9 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 pitsB[pos - 9]++;
             }
+
+            // auto collect if this position is an existing tuz
+            autoCollectIfOnExistingTuz(pos);
 
             highlightPit(pos, true);
             updateView();
@@ -357,15 +417,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let stonesToSow;
         if (stones === 1) {
+            // single stone moves to next pit
             pits[idx] = 0;
             stonesToSow = 1;
         } else {
+            // leave 1 stone, move the rest
             pits[idx] = 1;
             stonesToSow = stones - 1;
         }
 
-        // we no longer play a single move sound here;
-        // instead we play one sound per stone in sowAnimated
         updateView();
 
         const path = [];
@@ -376,20 +436,56 @@ document.addEventListener("DOMContentLoaded", () => {
         isAnimating = true;
         const movePlayer = player;
         let captured = 0;
+        let tuzCreatedLabel = "";
 
         sowAnimated(path, () => {
             const lastPos = path[path.length - 1];
 
+            // ----- TUZ CREATION OR EVEN CAPTURE -----
             if (movePlayer === "A" && lastPos >= 9) {
-                const pitIndex = lastPos - 9;
-                if (pitsB[pitIndex] % 2 === 0) {
+                const pitIndex = lastPos - 9; // on B side
+                const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
+                const symmetricForbidden = (tuzB !== null && tuzB === pitIndex);
+                const canCreateTuz =
+                    !isOppLastPit && tuzA === null && !symmetricForbidden;
+
+                if (canCreateTuz && pitsB[pitIndex] === 3) {
+                    // create tuz for A
+                    tuzA = pitIndex;
+                    captured = pitsB[pitIndex];
+                    storeA += pitsB[pitIndex];
+                    pitsB[pitIndex] = 0;
+                    tuzCreatedLabel = `B${pitIndex + 1}`;
+                } else if (
+                    pitsB[pitIndex] % 2 === 0 &&
+                    pitsB[pitIndex] > 0 &&
+                    pitIndex !== tuzA &&
+                    pitIndex !== tuzB
+                ) {
                     captured = pitsB[pitIndex];
                     storeA += pitsB[pitIndex];
                     pitsB[pitIndex] = 0;
                 }
             } else if (movePlayer === "B" && lastPos < 9) {
-                const pitIndex = lastPos;
-                if (pitsA[pitIndex] % 2 === 0) {
+                const pitIndex = lastPos; // on A side
+                const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
+                const symmetricForbidden = (tuzA !== null && tuzA === pitIndex);
+                const canCreateTuz =
+                    !isOppLastPit && tuzB === null && !symmetricForbidden;
+
+                if (canCreateTuz && pitsA[pitIndex] === 3) {
+                    // create tuz for B
+                    tuzB = pitIndex;
+                    captured = pitsA[pitIndex];
+                    storeB += pitsA[pitIndex];
+                    pitsA[pitIndex] = 0;
+                    tuzCreatedLabel = `A${pitIndex + 1}`;
+                } else if (
+                    pitsA[pitIndex] % 2 === 0 &&
+                    pitsA[pitIndex] > 0 &&
+                    pitIndex !== tuzA &&
+                    pitIndex !== tuzB
+                ) {
                     captured = pitsA[pitIndex];
                     storeB += pitsA[pitIndex];
                     pitsA[pitIndex] = 0;
@@ -408,6 +504,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 stonesMoved: stonesToSow,
                 lastPos,
                 captured,
+                tuzCreated: tuzCreatedLabel,
                 storeA,
                 storeB
             });
@@ -459,6 +556,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const pitsB_copy = pitsB.slice();
         let storeA_copy = storeA;
         let storeB_copy = storeB;
+        let tuzA_copy = tuzA;
+        let tuzB_copy = tuzB;
 
         const pits = player === "A" ? pitsA_copy : pitsB_copy;
         let stones = pits[idx];
@@ -483,18 +582,50 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 pitsB_copy[lastPos - 9]++;
             }
+            // (We ignore auto tuz collection during AI simulation;
+            //  AI just approximates capture on last pit.)
         }
 
         let captured = 0;
         if (player === "A" && lastPos >= 9) {
             const pitIndex = lastPos - 9;
-            if (pitsB_copy[pitIndex] % 2 === 0) {
+            const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
+            const symmetricForbidden = (tuzB_copy !== null && tuzB_copy === pitIndex);
+            const canCreateTuz =
+                !isOppLastPit && tuzA_copy === null && !symmetricForbidden;
+
+            if (canCreateTuz && pitsB_copy[pitIndex] === 3) {
+                captured = pitsB_copy[pitIndex];
+                storeA_copy += pitsB_copy[pitIndex];
+                tuzA_copy = pitIndex;
+                pitsB_copy[pitIndex] = 0;
+            } else if (
+                pitsB_copy[pitIndex] % 2 === 0 &&
+                pitsB_copy[pitIndex] > 0 &&
+                pitIndex !== tuzA_copy &&
+                pitIndex !== tuzB_copy
+            ) {
                 captured = pitsB_copy[pitIndex];
                 storeA_copy += pitsB_copy[pitIndex];
             }
         } else if (player === "B" && lastPos < 9) {
             const pitIndex = lastPos;
-            if (pitsA_copy[pitIndex] % 2 === 0) {
+            const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
+            const symmetricForbidden = (tuzA_copy !== null && tuzA_copy === pitIndex);
+            const canCreateTuz =
+                !isOppLastPit && tuzB_copy === null && !symmetricForbidden;
+
+            if (canCreateTuz && pitsA_copy[pitIndex] === 3) {
+                captured = pitsA_copy[pitIndex];
+                storeB_copy += pitsA_copy[pitIndex];
+                tuzB_copy = pitIndex;
+                pitsA_copy[pitIndex] = 0;
+            } else if (
+                pitsA_copy[pitIndex] % 2 === 0 &&
+                pitsA_copy[pitIndex] > 0 &&
+                pitIndex !== tuzA_copy &&
+                pitIndex !== tuzB_copy
+            ) {
                 captured = pitsA_copy[pitIndex];
                 storeB_copy += pitsA_copy[pitIndex];
             }
@@ -548,6 +679,8 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPlayer = "A";
         gameOver = false;
         isAnimating = false;
+        tuzA = null;
+        tuzB = null;
         clearHistory();
         updateView();
 
