@@ -69,6 +69,7 @@ h1 {
     justify-content: center;
     gap: 24px;
 
+    /* take nice portion of screen height on desktop */
     flex: 0 0 58vh;
 }
 
@@ -128,15 +129,18 @@ h1 {
         0 0 14px rgba(255,235,153,0.9);
 }
 
-/* pit numbers (1–9) */
+/* nicer pit numbers – small engraved labels under each pit */
 .pit-number {
     position: absolute;
-    top: 3px;
-    left: 8px;
+    bottom: -12px;              /* move number outside the pit */
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 11px;
     font-weight: bold;
-    color: rgba(40, 20, 5, 0.9);
-    text-shadow: 0 1px 1px rgba(255,255,255,0.7);
+    letter-spacing: 0.5px;
+    color: rgba(245, 220, 180, 0.9);      /* light wood color */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
 }
 
 /* stones inside pits */
@@ -489,6 +493,11 @@ h1 {
         width: 5px;
         height: 5px;
     }
+
+    .pit-number {
+        bottom: -10px;
+        font-size: 10px;
+    }
 }
 
 @media (max-width: 800px) {
@@ -547,5 +556,10 @@ h1 {
     .splash-panel {
         width: 90%;
         padding: 20px 20px;
+    }
+
+    .pit-number {
+        bottom: -9px;
+        font-size: 9px;
     }
 }
