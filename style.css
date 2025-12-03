@@ -76,7 +76,7 @@ h1 {
 .pits-area {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 40px; /* MORE SPACE between upper and lower pits */
 }
 
 /* ----------- PIT ROWS ----------- */
@@ -129,21 +129,34 @@ h1 {
         0 0 14px rgba(255,235,153,0.9);
 }
 
-/* nicer pit numbers – small engraved labels under each pit */
+/* PIT NUMBERS – nicer, separated for top/bottom rows */
+
 .pit-number {
     position: absolute;
-    bottom: -12px;              /* move number outside the pit */
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
-    letter-spacing: 0.5px;
-    color: rgba(245, 220, 180, 0.9);      /* light wood color */
+    letter-spacing: 0.3px;
+    color: rgba(245, 220, 180, 0.85); /* soft light wood */
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
     pointer-events: none;
 }
 
+/* Player A (bottom row) – numbers UNDER the pits */
+.pit-bottom .pit-number {
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Player B (top row) – numbers ABOVE the pits */
+.pit-top .pit-number {
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 /* stones inside pits */
+
 .stones-container {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -169,6 +182,7 @@ h1 {
 }
 
 /* TUZ highlight */
+
 .pit.tuz {
     border: 3px solid #ffeb3b;
     box-shadow:
@@ -205,6 +219,7 @@ h1 {
 }
 
 /* stones inside kazans */
+
 .store-stones {
     flex: 1;
     display: grid;
@@ -279,6 +294,7 @@ h1 {
 }
 
 /* BUTTONS */
+
 .btn {
     padding: 8px 20px;
     font-size: 15px;
@@ -307,6 +323,7 @@ h1 {
 }
 
 /* Pit currently receiving a stone */
+
 .pit.sowing {
     box-shadow:
         inset 0 3px 5px rgba(255,255,255,0.5),
@@ -466,6 +483,10 @@ h1 {
         flex: 0 0 55vh;
     }
 
+    .pits-area {
+        gap: 32px; /* slightly smaller gap but still spaced */
+    }
+
     .row {
         grid-template-columns: repeat(9, 85px);
         gap: 8px;
@@ -495,8 +516,15 @@ h1 {
     }
 
     .pit-number {
-        bottom: -10px;
-        font-size: 10px;
+        font-size: 9px;
+    }
+
+    .pit-bottom .pit-number {
+        bottom: -11px;
+    }
+
+    .pit-top .pit-number {
+        top: -11px;
     }
 }
 
@@ -513,6 +541,10 @@ h1 {
         padding: 10px 10px;
         gap: 10px;
         flex: 0 0 auto;
+    }
+
+    .pits-area {
+        gap: 24px;
     }
 
     .row {
@@ -559,7 +591,14 @@ h1 {
     }
 
     .pit-number {
+        font-size: 8.5px;
+    }
+
+    .pit-bottom .pit-number {
         bottom: -9px;
-        font-size: 9px;
+    }
+
+    .pit-top .pit-number {
+        top: -9px;
     }
 }
