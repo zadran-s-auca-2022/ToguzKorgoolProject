@@ -2,12 +2,12 @@
 
 A web-based implementation of the traditional **Kyrgyz strategy game Toguz Korgool**, created as my Senior Project.
 
-🎮 **Live Game:**  
+**Live Game:**  
 https://zadran-s-auca-2022.github.io/ToguzKorgoolProject/
 
 ---
 
-## 📌 Project Overview
+## Project Overview
 
 This project recreates the classic Kyrgyz board game **Toguz Korgool** as an interactive web application.
 
@@ -21,7 +21,7 @@ This prototype was developed as the **Fall-semester implementation** for the Sen
 
 ---
 
-## 🎮 Gameplay at a Glance
+## Gameplay at a Glance
 
 - **Two rows of 9 pits** (top: Player B, bottom: Player A)
 - Each pit starts with **9 korgools**
@@ -34,33 +34,33 @@ This prototype was developed as the **Fall-semester implementation** for the Sen
 
 ---
 
-## 🎯 Main Features
+## Main Features
 
-- ✅ **Two-player local mode** (on the same device)  
-- ✅ **“Play vs Computer” mode**  
+-  **Two-player local mode** (on the same device)  
+-  **“Play vs Computer” mode**  
   - Simple AI that chooses a move aiming to capture the most stones this turn.
-- ✅ **Full sowing & capturing logic**
+-  **Full sowing & capturing logic**
   - 1-stone vs multi-stone moves
   - Capturing on even counts
   - Tuz (sool) rule support
   - Automatic detection of game end (≥ 82 stones or no more possible moves)
-- ✅ **Visual board & pits**
+-  **Visual board & pits**
   - Wooden board style inspired by real Toguz Korgool sets
   - Stone graphics instead of plain numbers
   - Pit numbers for easier explanation and move history
-- ✅ **Move History panel**
+-  **Move History panel**
   - Logs each move with player, pit number, stones moved, last pit, and captured stones
-- ✅ **Settings panel**
+-  **Settings panel**
   - Toggle sound effects (sowing / capturing)
   - View a short rules summary
-- ✅ **Splash screen**
+-  **Splash screen**
   - Simple start screen with game logo and “Start Game” button
-- ✅ **Responsive layout**
+-  **Responsive layout**
   - Works on desktop and adapts to smaller windows (laptop / tablet)
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 - **HTML5** – page structure and layout  
 - **CSS3** – board design, animations, and responsive styling  
@@ -70,7 +70,7 @@ This prototype was developed as the **Fall-semester implementation** for the Sen
 
 ---
 
-## ▶️ How to Run the Project Locally
+## How to Run the Project Locally
 
 1. **Clone the repository:**
 
@@ -78,7 +78,7 @@ This prototype was developed as the **Fall-semester implementation** for the Sen
    git clone https://github.com/zadran-s-auca-2022/ToguzKorgoolProject.git
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ToguzKorgoolProject/
