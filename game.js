@@ -4,7 +4,7 @@ const NUM_PITS_PER_PLAYER = 9;
 const TOTAL_PITS = NUM_PITS_PER_PLAYER * 2; // 18
 const INITIAL_STONES = 9;
 const TARGET_SCORE = 82;
-const SOW_DELAY = 90; // ms per stone for animation
+const SOW_DELAY = 200; // ms per stone for animation
 
 // ----------------- STATE -----------------
 
