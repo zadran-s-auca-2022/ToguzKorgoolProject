@@ -12,8 +12,10 @@ let pits = new Array(TOTAL_PITS).fill(INITIAL_STONES);
 let storeA = 0; // Player A (bottom)
 let storeB = 0; // Player B (top)
 
-let tuzA = -1; // A's tuz (index in pits, always on B side 9..17)
-let tuzB = -1; // B's tuz (index in pits, always on A side 0..8)
+// A's tuz is on B side (indices 9..17)
+// B's tuz is on A side (indices 0..8)
+let tuzA = -1; // A's tuz (index in pits)
+let tuzB = -1; // B's tuz (index in pits)
 
 let currentPlayer = 'A';
 let isAnimating = false;
@@ -352,13 +354,12 @@ async function performMove(startIndex, player, addToHistory) {
     while (stonesToSow > 0) {
         pos = (pos + 1) % TOTAL_PITS;
 
-        // if landing in opponent's tuz, stone goes to opponent's store
-        if ((player === 'A' && pos === tuzB) || (player === 'B' && pos === tuzA)) {
-            if (player === 'A') {
-                storeB++;
-            } else {
-                storeA++;
-            }
+        // If landing in any tuz, stone goes directly to that owner's kazan
+        if (pos === tuzA) {
+            storeA++;
+            playSowSound();
+        } else if (pos === tuzB) {
+            storeB++;
             playSowSound();
         } else {
             pits[pos]++;
@@ -378,7 +379,7 @@ async function performMove(startIndex, player, addToHistory) {
 
     const lastPit = pos;
 
-    // capture / tuz rules only if lastPit belongs to opponent and is not already a tuz
+    // capture / tuz rules only if lastPit belongs to opponent and is not opponent's tuz
     if (!isGameOver && isOpponentsPit(player, lastPit) && !isOpponentTuz(player, lastPit)) {
         const opponent = player === 'A' ? 'B' : 'A';
         const stonesInLast = pits[lastPit];
@@ -538,9 +539,10 @@ function simulateCapture(startIndex, player) {
     while (stonesToSow > 0) {
         pos = (pos + 1) % TOTAL_PITS;
 
-        if ((player === 'A' && pos === tuzBCopy) || (player === 'B' && pos === tuzACopy)) {
-            // stone goes to opponent store in real game, but
-            // for AI we only care about capture from last pit
+        // In a real game stones landing on either tuz go to its owner's kazan.
+        // For the AI we just don't put them into pitsCopy.
+        if (pos === tuzACopy || pos === tuzBCopy) {
+            // do nothing (stone goes to kazan in real game)
         } else {
             pitsCopy[pos]++;
         }
@@ -553,8 +555,9 @@ function simulateCapture(startIndex, player) {
 
     const opponent = player === 'A' ? 'B' : 'A';
     const isOppPit = ownerOfPit(lastPit) === opponent;
-    const isTuzPit = (player === 'A' && lastPit === tuzBCopy) ||
-                     (player === 'B' && lastPit === tuzACopy);
+
+    // we don't capture from any tuz
+    const isTuzPit = (lastPit === tuzACopy) || (lastPit === tuzBCopy);
 
     if (isOppPit && !isTuzPit) {
         const stonesInLast = pitsCopy[lastPit];
@@ -575,7 +578,8 @@ function simulateCapture(startIndex, player) {
                 !isOppositeToTuzCopy;
 
             if (canMakeTuzCopy) {
-                captured = stonesInLast; // 3 stones go to kazan
+                // Tuz creation is worth those 3 stones
+                captured = stonesInLast;
             } else if (stonesInLast % 2 === 0) {
                 captured = stonesInLast;
             }
