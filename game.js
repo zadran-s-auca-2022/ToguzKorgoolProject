@@ -1,786 +1,567 @@
-// game.js
+// ----------------- CONSTANTS -----------------
 
-document.addEventListener("DOMContentLoaded", () => {
-    const PITS_PER_SIDE = 9;
-    const START_STONES = 9;
+const NUM_PITS_PER_PLAYER = 9;
+const TOTAL_PITS = NUM_PITS_PER_PLAYER * 2; // 18
+const INITIAL_STONES = 9;
+const TARGET_SCORE = 82;
+const SOW_DELAY = 90; // ms per stone for animation
 
-    let pitsA = new Array(PITS_PER_SIDE).fill(START_STONES);
-    let pitsB = new Array(PITS_PER_SIDE).fill(START_STONES);
-    let storeA = 0;
-    let storeB = 0;
-    let currentPlayer = "A";
-    let gameOver = false;
-    let isAnimating = false;
-    let moveHistory = [];
-    let vsComputer = false;
+// ----------------- STATE -----------------
 
-    // Tuz (soled) pits:
-    // tuzA: index (0-8) of pit on B's side that belongs to A
-    // tuzB: index (0-8) of pit on A's side that belongs to B
-    let tuzA = null;
-    let tuzB = null;
+let pits = new Array(TOTAL_PITS).fill(INITIAL_STONES);
+let storeA = 0; // Player A (bottom)
+let storeB = 0; // Player B (top)
 
-    // settings state
-    let soundOn = true;
-    let language = "en";
-    let audioCtx = null;
+let tuzA = -1; // A's tuz (index in pits)
+let tuzB = -1; // B's tuz
 
-    const RULES_TEXT = {
-        en: "Each player has 9 pits with 9 stones. On your turn, choose one of your own pits. " +
-            "If the pit has 1 stone, move that stone to the next pit. " +
-            "If it has more than 1 stone, leave 1 stone in the starting pit and sow the rest " +
-            "anti-clockwise across all pits. If your last stone lands in the opponent's pit and " +
-            "the number of stones there becomes even, you capture all stones from that pit into your Kazan. " +
-            "There is also a special 'tuz' (soled) pit: if your last stone lands in an opponent's pit and it becomes exactly 3, " +
-            "under certain conditions that pit becomes your tuz and all future stones landing there are yours. " +
-            "The player who collects at least 82 stones wins. If one side becomes empty, the remaining stones " +
-            "on the other side go to that player's Kazan and the game ends.",
-        kg: "Ар бир оюнчу 9 уячадан жана ар биринде 9 коргоолдон баштайт. " +
-            "Өз кезегиңизде өз тарабыңыздагы бир уячаны тандаңыз. " +
-            "Эгер уяча 1 коргоол болсо, аны кийинки уячага жылдырасыз. " +
-            "Эгер 1ден көп болсо, баштапкы уячага 1 коргоол калтырып, калганын саат жебесине каршы таратып чыгасыз. " +
-            "Эгер акыркы коргоол каршы тараптын уячасына түшүп, ал жактагы коргоолдордун саны жуп болсо, " +
-            "анын баары сиздин казаныңызга өтөт. Ошондой эле 'түз' деген өзгөчө уяча бар: эгер акыркы коргоол " +
-            "каршы тараптын уячасына түшүп, ал жакта так 3 коргоол болсо жана эрежелерге каршы келбесе, ал уяча сиздин түзүңүз болуп калат " +
-            "жана андан ары түшкөн бардык коргоолдор сизге таандык болот. Ким 82 же андан көп коргоол топтосо, ошол жеңет. " +
-            "Эгер бир тараптын бардык уячалары бош калса, экинчи тараптагы калган коргоолдор ошол оюнчунун казанына өтөт.",
-        ru: "У каждого игрока 9 лунок по 9 камней. В свой ход вы выбираете одну из своих лунок. " +
-            "Если в лунке 1 камень, вы переносите его в следующую лунку. " +
-            "Если камней больше, один камень остаётся в исходной лунке, а остальные вы раскладываете " +
-            "по кругу против часовой стрелки. Если последний камень попадает в лунку соперника и общее число " +
-            "камней там становится чётным, вы забираете все эти камни в свой казан. " +
-            "Есть также особая лунка — 'тёз' (tuz): если последний камень попадает в лунку соперника и там становится ровно 3 камня, " +
-            "при соблюдении ограничений эта лунка становится вашим тёзом, и все последующие камни в ней — ваши. " +
-            "Побеждает игрок, который собрал не менее 82 камней. Если у одного игрока лунки пустые, " +
-            "оставшиеся камни переходят в казан второго, и игра заканчивается."
-    };
+let currentPlayer = 'A';
+let isAnimating = false;
+let isGameOver = false;
+let soundEnabled = true;
+let aiEnabled = true; // ALWAYS vs computer now
 
-    // ---------- DOM ELEMENTS ----------
+let moveHistory = [];
+let moveCounter = 0;
 
-    const rowTop = document.getElementById("row-top");
-    const rowBottom = document.getElementById("row-bottom");
-    const scoreAEl = document.getElementById("scoreA");
-    const scoreBEl = document.getElementById("scoreB");
-    const storeAEl = document.getElementById("storeA");
-    const storeBEl = document.getElementById("storeB");
-    const statusEl = document.getElementById("status");
-    const resetBtn = document.getElementById("resetBtn");
-    const aiBtn = document.getElementById("aiBtn");
-    const historyListEl = document.getElementById("historyList");
+// DOM references
+const rowTop = document.getElementById('row-top');
+const rowBottom = document.getElementById('row-bottom');
 
-    const settingsBtn = document.getElementById("settingsBtn");
-    const settingsOverlay = document.getElementById("settingsOverlay");
-    const settingsClose = document.getElementById("settingsClose");
-    const soundToggle = document.getElementById("soundToggle");
-    const languageSelect = document.getElementById("languageSelect");
-    const rulesTextEl = document.getElementById("rulesText");
+const storeAStonesEl = document.getElementById('storeAStones');
+const storeBStonesEl = document.getElementById('storeBStones');
+const storeACountEl = document.getElementById('storeACount');
+const storeBCountEl = document.getElementById('storeBCount');
 
-    const splash = document.getElementById("splash");
-    const splashStartBtn = document.getElementById("splashStartBtn");
+const scoreAEl = document.getElementById('scoreA');
+const scoreBEl = document.getElementById('scoreB');
 
-    // ---------- AUDIO (simple beeps, no files) ----------
+const statusEl = document.getElementById('status');
+const aiBtn = document.getElementById('aiBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 
-    function initAudio() {
-        if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
-            const Ctx = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new Ctx();
-        }
+const historyListEl = document.getElementById('historyList');
+
+const splashEl = document.getElementById('splash');
+const splashStartBtn = document.getElementById('splashStartBtn');
+
+const settingsOverlayEl = document.getElementById('settingsOverlay');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const soundToggleEl = document.getElementById('soundToggle');
+
+// pit DOM caches
+const pitEls = new Array(TOTAL_PITS);
+const pitStoneContainers = new Array(TOTAL_PITS);
+const pitCountEls = new Array(TOTAL_PITS);
+const pitNumberEls = new Array(TOTAL_PITS);
+
+// simple WebAudio beeps
+let audioCtx = null;
+function ensureAudioCtx() {
+    if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+    }
+}
+
+function playBeep(freq = 800, duration = 0.05, volume = 0.04) {
+    if (!soundEnabled) return;
+    ensureAudioCtx();
+    if (!audioCtx) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+function playSowSound() {
+    playBeep(900, 0.04, 0.03);
+}
+
+function playCaptureSound() {
+    playBeep(400, 0.09, 0.05);
+}
+
+// ----------------- UTILS -----------------
+
+function ownerOfPit(index) {
+    return index < NUM_PITS_PER_PLAYER ? 'A' : 'B';
+}
+
+function pitNumberForIndex(index) {
+    if (index < NUM_PITS_PER_PLAYER) return index + 1; // A pits 1..9
+    return index - NUM_PITS_PER_PLAYER + 1;            // B pits 1..9
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function setStatus(text) {
+    statusEl.textContent = text;
+}
+
+// ----------------- BOARD CREATION -----------------
+
+function createPitElement(index, owner) {
+    const pit = document.createElement('div');
+    pit.classList.add('pit');
+    pit.dataset.index = index;
+
+    if (owner === 'A') {
+        pit.classList.add('pit-bottom');
+    } else {
+        pit.classList.add('pit-top');
     }
 
-    function playTone(freq, duration) {
-        if (!soundOn) return;
-        if (!audioCtx) initAudio();
-        if (!audioCtx) return;
+    const stonesContainer = document.createElement('div');
+    stonesContainer.classList.add('stones-container');
 
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+    const countSpan = document.createElement('div');
+    countSpan.classList.add('stone-count');
 
-        osc.frequency.value = freq;
-        osc.type = "sine";
+    const numSpan = document.createElement('div');
+    numSpan.classList.add('pit-number');
+    numSpan.textContent = pitNumberForIndex(index);
 
-        const now = audioCtx.currentTime;
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    pit.appendChild(stonesContainer);
+    pit.appendChild(countSpan);
+    pit.appendChild(numSpan);
 
-        osc.start(now);
-        osc.stop(now + duration + 0.02);
+    pit.addEventListener('click', () => {
+        handlePitClick(index);
+    });
+
+    pitEls[index] = pit;
+    pitStoneContainers[index] = stonesContainer;
+    pitCountEls[index] = countSpan;
+    pitNumberEls[index] = numSpan;
+
+    return pit;
+}
+
+function buildBoard() {
+    // Top row: Player B pits (indices 9..17)
+    rowTop.innerHTML = '';
+    for (let i = 0; i < NUM_PITS_PER_PLAYER; i++) {
+        const index = NUM_PITS_PER_PLAYER + i;
+        const pit = createPitElement(index, 'B');
+        rowTop.appendChild(pit);
     }
 
-    // one short “tick” per stone
-    function playStoneSound() {
-        playTone(650, 0.07);
+    // Bottom row: Player A pits (indices 0..8)
+    rowBottom.innerHTML = '';
+    for (let i = 0; i < NUM_PITS_PER_PLAYER; i++) {
+        const index = i;
+        const pit = createPitElement(index, 'A');
+        rowBottom.appendChild(pit);
     }
+}
 
-    function playCaptureSound() {
-        playTone(320, 0.18);
-    }
+// ----------------- RENDERING -----------------
 
-    function playGameOverSound() {
-        playTone(220, 0.3);
-    }
+function renderPits() {
+    for (let i = 0; i < TOTAL_PITS; i++) {
+        const stones = pits[i];
+        const container = pitStoneContainers[i];
+        const countEl = pitCountEls[i];
+        const pitEl = pitEls[i];
 
-    // ---------- BOARD SETUP ----------
-
-    function createPitElement(player, idx) {
-        const pit = document.createElement("div");
-        pit.className = "pit " + (player === "A" ? "pit-bottom" : "pit-top");
-        pit.dataset.player = player;
-        pit.dataset.index = idx;
-
-        // Number label inside pit
-        const num = document.createElement("div");
-        num.className = "pit-number";
-        const displayNumber = player === "A" ? idx + 1 : (PITS_PER_SIDE - idx);
-        num.textContent = displayNumber;
-        pit.appendChild(num);
-
-        const stonesContainer = document.createElement("div");
-        stonesContainer.className = "stones-container";
-        pit.appendChild(stonesContainer);
-
-        const countLabel = document.createElement("div");
-        countLabel.className = "stone-count";
-        pit.appendChild(countLabel);
-
-        return pit;
-    }
-
-    function createBoardDOM() {
-        rowTop.innerHTML = "";
-        for (let i = PITS_PER_SIDE - 1; i >= 0; i--) {
-            rowTop.appendChild(createPitElement("B", i));
-        }
-
-        rowBottom.innerHTML = "";
-        for (let i = 0; i < PITS_PER_SIDE; i++) {
-            rowBottom.appendChild(createPitElement("A", i));
-        }
-
-        rowTop.addEventListener("click", onPitClick);
-        rowBottom.addEventListener("click", onPitClick);
-
-        updateView();
-    }
-
-    // ---------- RENDER HELPERS ----------
-
-    function setStatus(msg) {
-        statusEl.textContent = msg;
-    }
-
-    function renderStones(container, count, isStore) {
-        container.innerHTML = "";
-
-        let maxBalls;
-        if (isStore) {
-            maxBalls = Math.min(count, 82);
-        } else {
-            maxBalls = count;
-        }
-
-        for (let i = 0; i < maxBalls; i++) {
-            const stone = document.createElement("div");
-            stone.className = "stone";
+        // Stones (cap visual at, say, 40)
+        const maxVisual = Math.min(stones, 40);
+        container.innerHTML = '';
+        for (let s = 0; s < maxVisual; s++) {
+            const stone = document.createElement('div');
+            stone.classList.add('stone');
             container.appendChild(stone);
         }
+
+        countEl.textContent = stones;
+
+        pitEl.classList.toggle('tuz', i === tuzA || i === tuzB);
+        pitEl.classList.remove('sowing');
+    }
+}
+
+function renderStores() {
+    storeAStonesEl.innerHTML = '';
+    storeBStonesEl.innerHTML = '';
+
+    // small stones visually (also capped)
+    const maxVisualA = Math.min(storeA, 80);
+    const maxVisualB = Math.min(storeB, 80);
+
+    for (let i = 0; i < maxVisualA; i++) {
+        const stone = document.createElement('div');
+        stone.classList.add('stone');
+        storeAStonesEl.appendChild(stone);
     }
 
-    function renderPit(pit, stones, isActive) {
-        const container = pit.querySelector(".stones-container");
-        const label = pit.querySelector(".stone-count");
-
-        pit.classList.toggle("active-player", isActive);
-        renderStones(container, stones, false);
-        label.textContent = stones;
+    for (let i = 0; i < maxVisualB; i++) {
+        const stone = document.createElement('div');
+        stone.classList.add('stone');
+        storeBStonesEl.appendChild(stone);
     }
 
-    function renderStore(storeEl, count, labelHtml) {
-        const labelEl = storeEl.querySelector(".store-label");
-        const stonesContainer = storeEl.querySelector(".store-stones");
-        const countEl = storeEl.querySelector(".store-count");
+    storeACountEl.textContent = storeA;
+    storeBCountEl.textContent = storeB;
 
-        if (labelHtml) labelEl.innerHTML = labelHtml;
-        renderStones(stonesContainer, count, true);
-        countEl.textContent = count;
-    }
+    scoreAEl.textContent = `Player A : ${storeA}`;
+    scoreBEl.textContent = `Player B : ${storeB}`;
+}
 
-    function updateView() {
-        document.querySelectorAll(".pit").forEach(pit => {
-            const player = pit.dataset.player;
-            const idx = parseInt(pit.dataset.index, 10);
-            const stones = player === "A" ? pitsA[idx] : pitsB[idx];
-            const isActive = player === currentPlayer;
-
-            // mark tuz pits
-            let isTuz = false;
-            if (player === "A" && tuzB !== null && tuzB === idx) {
-                isTuz = true;
-            }
-            if (player === "B" && tuzA !== null && tuzA === idx) {
-                isTuz = true;
-            }
-            pit.classList.toggle("tuz", isTuz);
-
-            renderPit(pit, stones, isActive);
-        });
-
-        renderStore(storeAEl, storeA, "A<br>Kazan");
-        renderStore(storeBEl, storeB, "B<br>Kazan");
-
-        scoreAEl.textContent = `Player A : ${storeA}`;
-        scoreBEl.textContent = `Player B : ${storeB}`;
-
-        if (!gameOver) {
-            if (vsComputer) {
-                setStatus(
-                    `Player ${
-                        currentPlayer === "A" ? "A (You)" : "B (Computer)"
-                    }'s turn`
-                );
-            } else {
-                setStatus(`Player ${currentPlayer}'s turn`);
-            }
-        }
-    }
-
-    function totalStones(arr) {
-        return arr.reduce((a, b) => a + b, 0);
-    }
-
-    // ---------- HISTORY ----------
-
-    function addHistoryEntry(entry) {
-        moveHistory.push(entry);
-        if (!historyListEl) return;
-
-        const div = document.createElement("div");
-        div.className = "history-entry";
-
-        const lastSide = entry.lastPos < 9 ? "A" : "B";
-        const lastIndex = entry.lastPos < 9 ? entry.lastPos + 1 : entry.lastPos - 8;
-
-        let text = `${entry.moveNumber}. Player ${entry.player} – pit ${
-            entry.pitIndex + 1
-        }`;
-        text += ` (stones ${entry.stonesBefore} → moved ${entry.stonesMoved}, last: ${lastSide}${lastIndex}`;
-        if (entry.captured > 0) {
-            text += `, captured ${entry.captured}`;
-        }
-        if (entry.tuzCreated) {
-            text += `, TUZ at ${entry.tuzCreated}`;
-        }
-        text += `, A:${entry.storeA}, B:${entry.storeB})`;
-
-        div.textContent = text;
+function renderHistory() {
+    historyListEl.innerHTML = '';
+    for (const entry of moveHistory) {
+        const div = document.createElement('div');
+        div.classList.add('history-entry');
+        div.textContent =
+            `${entry.num}. Player ${entry.player} – pit ${entry.pit} ` +
+            `(stones ${entry.stonesMoved} → moved ${entry.steps}, ` +
+            `last: ${entry.lastPit}, captured ${entry.captured}, ` +
+            `A:${entry.storeA}, B:${entry.storeB})`;
         historyListEl.appendChild(div);
-        historyListEl.scrollTop = historyListEl.scrollHeight;
+    }
+    historyListEl.scrollTop = historyListEl.scrollHeight;
+}
+
+function renderAll() {
+    renderPits();
+    renderStores();
+    renderHistory();
+}
+
+// ----------------- GAME LOGIC -----------------
+
+function resetGame() {
+    pits = new Array(TOTAL_PITS).fill(INITIAL_STONES);
+    storeA = 0;
+    storeB = 0;
+    tuzA = -1;
+    tuzB = -1;
+    currentPlayer = 'A';
+    isAnimating = false;
+    isGameOver = false;
+    moveHistory = [];
+    moveCounter = 0;
+
+    setStatus('Player A vs Computer – Player A starts');
+    renderAll();
+}
+
+function handlePitClick(index) {
+    if (isGameOver || isAnimating) return;
+
+    // Human is always Player A (bottom row)
+    if (currentPlayer !== 'A') return;
+
+    // Must be A's pit and non-empty
+    if (ownerOfPit(index) !== 'A') return;
+    if (pits[index] === 0) return;
+
+    performMove(index, 'A', true);
+}
+
+async function performMove(startIndex, player, addToHistory) {
+    if (isGameOver || isAnimating) return;
+
+    isAnimating = true;
+
+    let stones = pits[startIndex];
+    if (stones === 0) {
+        isAnimating = false;
+        return;
     }
 
-    function clearHistory() {
-        moveHistory = [];
-        if (historyListEl) {
-            historyListEl.innerHTML = "";
-        }
-    }
+    let leavingOne = stones > 1;
+    let stonesToSow = leavingOne ? stones - 1 : stones;
 
-    // ---------- GAME END RULES ----------
+    pits[startIndex] = leavingOne ? 1 : 0;
+    renderPits();
 
-    function finishGameByScore() {
-        gameOver = true;
-        playGameOverSound();
-        if (storeA > storeB) {
-            setStatus(`Game over! Player A wins (${storeA} : ${storeB})`);
-        } else if (storeB > storeA) {
-            const label = vsComputer ? "Computer (B)" : "Player B";
-            setStatus(`Game over! ${label} wins (${storeB} : ${storeA})`);
-        } else {
-            setStatus(`Game over! It's a tie (${storeA} : ${storeB})`);
-        }
-        updateView();
-    }
+    let pos = startIndex;
+    let steps = 0;
+    let captured = 0;
 
-    function checkGameEnd() {
-        if (storeA >= 82 || storeB >= 82) {
-            finishGameByScore();
-            return true;
-        }
-        if (totalStones(pitsA) === 0 || totalStones(pitsB) === 0) {
-            storeA += totalStones(pitsA);
-            storeB += totalStones(pitsB);
-            pitsA.fill(0);
-            pitsB.fill(0);
-            finishGameByScore();
-            return true;
-        }
-        return false;
-    }
+    while (stonesToSow > 0) {
+        pos = (pos + 1) % TOTAL_PITS;
 
-    // ---------- TUZ HELPERS ----------
-
-    function autoCollectIfOnExistingTuz(globalPos) {
-        // If a stone lands in an already existing tuz, move stones to owner
-        if (globalPos < 9) {
-            // A side: could be tuzB
-            const idx = globalPos;
-            if (tuzB !== null && tuzB === idx && pitsA[idx] > 0) {
-                const taken = pitsA[idx];
-                storeB += taken;
-                pitsA[idx] = 0;
-            }
-        } else {
-            // B side: could be tuzA
-            const idx = globalPos - 9;
-            if (tuzA !== null && tuzA === idx && pitsB[idx] > 0) {
-                const taken = pitsB[idx];
-                storeA += taken;
-                pitsB[idx] = 0;
-            }
-        }
-    }
-
-    // ---------- ANIMATION HELPERS ----------
-
-    function highlightPit(globalPos, on) {
-        let selector;
-        if (globalPos < 9) {
-            selector = `.pit-bottom[data-index="${globalPos}"]`;
-        } else {
-            const idx = globalPos - 9;
-            selector = `.pit-top[data-index="${idx}"]`;
-        }
-        const el = document.querySelector(selector);
-        if (!el) return;
-        if (on) el.classList.add("sowing");
-        else el.classList.remove("sowing");
-    }
-
-    function sowAnimated(path, done) {
-        let i = 0;
-
-        function step() {
-            if (i === path.length) {
-                if (path.length > 0) {
-                    highlightPit(path[path.length - 1], false);
-                }
-                done();
-                return;
-            }
-
-            const pos = path[i];
-
-            // sound for each stone
-            playStoneSound();
-
-            if (i > 0) {
-                highlightPit(path[i - 1], false);
-            }
-
-            if (pos < 9) {
-                pitsA[pos]++;
+        // if landing in opponent's tuz, stone goes to opponent's store
+        if ((player === 'A' && pos === tuzB) || (player === 'B' && pos === tuzA)) {
+            if (player === 'A') {
+                storeB++;
             } else {
-                pitsB[pos - 9]++;
+                storeA++;
             }
-
-            // auto collect if this position is an existing tuz
-            autoCollectIfOnExistingTuz(pos);
-
-            highlightPit(pos, true);
-            updateView();
-
-            i++;
-            setTimeout(step, 180);
+            playSowSound();
+        } else {
+            pits[pos]++;
+            playSowSound();
         }
 
-        step();
+        // sowing visual highlight
+        pitEls[pos].classList.add('sowing');
+        renderPits();
+        renderStores();
+        await delay(SOW_DELAY);
+        pitEls[pos].classList.remove('sowing');
+
+        stonesToSow--;
+        steps++;
     }
 
-    // ---------- MOVE EXECUTION (used by human + AI) ----------
+    // last pit is 'pos', but if that was a tuz, we consider landing there only for tuz creation rule
+    const lastPit = pos;
 
-    function startMove(player, idx) {
-        if (gameOver || isAnimating) return false;
+    // capture / tuz rules only if lastPit really has stones and belongs to opponent
+    if (!isGameOver) {
+        const opponent = player === 'A' ? 'B' : 'A';
+        if (ownerOfPit(lastPit) === opponent && lastPit !== tuzA && lastPit !== tuzB) {
+            const stonesInLast = pits[lastPit];
 
-        const pits = player === "A" ? pitsA : pitsB;
-        let stones = pits[idx];
+            // TUZ rule: if last pit now has 3 stones
+            const playerHasTuz = player === 'A' ? tuzA !== -1 : tuzB !== -1;
+            const isNinthPit =
+                (opponent === 'A' && lastPit === NUM_PITS_PER_PLAYER - 1) ||
+                (opponent === 'B' && lastPit === TOTAL_PITS - 1);
 
-        if (stones === 0) {
-            if (!vsComputer || player === "A") {
-                setStatus("You cannot move from an empty pit.");
-            }
-            return false;
-        }
-
-        const stonesBefore = stones;
-        const startPos = player === "A" ? idx : 9 + idx;
-
-        let stonesToSow;
-        if (stones === 1) {
-            // single stone moves to next pit
-            pits[idx] = 0;
-            stonesToSow = 1;
-        } else {
-            // leave 1 stone, move the rest
-            pits[idx] = 1;
-            stonesToSow = stones - 1;
-        }
-
-        updateView();
-
-        const path = [];
-        for (let s = 1; s <= stonesToSow; s++) {
-            path.push((startPos + s) % 18);
-        }
-
-        isAnimating = true;
-        const movePlayer = player;
-        let captured = 0;
-        let tuzCreatedLabel = "";
-
-        sowAnimated(path, () => {
-            const lastPos = path[path.length - 1];
-
-            // ----- TUZ CREATION OR EVEN CAPTURE -----
-            if (movePlayer === "A" && lastPos >= 9) {
-                const pitIndex = lastPos - 9; // on B side
-                const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
-                const symmetricForbidden = (tuzB !== null && tuzB === pitIndex);
-                const canCreateTuz =
-                    !isOppLastPit && tuzA === null && !symmetricForbidden;
-
-                if (canCreateTuz && pitsB[pitIndex] === 3) {
-                    // create tuz for A
-                    tuzA = pitIndex;
-                    captured = pitsB[pitIndex];
-                    storeA += pitsB[pitIndex];
-                    pitsB[pitIndex] = 0;
-                    tuzCreatedLabel = `B${pitIndex + 1}`;
-                } else if (
-                    pitsB[pitIndex] % 2 === 0 &&
-                    pitsB[pitIndex] > 0 &&
-                    pitIndex !== tuzA &&
-                    pitIndex !== tuzB
-                ) {
-                    captured = pitsB[pitIndex];
-                    storeA += pitsB[pitIndex];
-                    pitsB[pitIndex] = 0;
+            if (!playerHasTuz && stonesInLast === 3 && !isNinthPit) {
+                if (player === 'A') tuzA = lastPit;
+                else tuzB = lastPit;
+            } else if (stonesInLast % 2 === 0 && stonesInLast > 0) {
+                // normal capture on even count
+                if (player === 'A') {
+                    storeA += stonesInLast;
+                } else {
+                    storeB += stonesInLast;
                 }
-            } else if (movePlayer === "B" && lastPos < 9) {
-                const pitIndex = lastPos; // on A side
-                const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
-                const symmetricForbidden = (tuzA !== null && tuzA === pitIndex);
-                const canCreateTuz =
-                    !isOppLastPit && tuzB === null && !symmetricForbidden;
-
-                if (canCreateTuz && pitsA[pitIndex] === 3) {
-                    // create tuz for B
-                    tuzB = pitIndex;
-                    captured = pitsA[pitIndex];
-                    storeB += pitsA[pitIndex];
-                    pitsA[pitIndex] = 0;
-                    tuzCreatedLabel = `A${pitIndex + 1}`;
-                } else if (
-                    pitsA[pitIndex] % 2 === 0 &&
-                    pitsA[pitIndex] > 0 &&
-                    pitIndex !== tuzA &&
-                    pitIndex !== tuzB
-                ) {
-                    captured = pitsA[pitIndex];
-                    storeB += pitsA[pitIndex];
-                    pitsA[pitIndex] = 0;
-                }
-            }
-
-            if (captured > 0) {
+                captured += stonesInLast;
+                pits[lastPit] = 0;
                 playCaptureSound();
             }
+        }
+    }
 
-            addHistoryEntry({
-                moveNumber: moveHistory.length + 1,
-                player: movePlayer,
-                pitIndex: idx,
-                stonesBefore,
-                stonesMoved: stonesToSow,
-                lastPos,
-                captured,
-                tuzCreated: tuzCreatedLabel,
-                storeA,
-                storeB
-            });
+    renderAll();
 
-            currentPlayer = currentPlayer === "A" ? "B" : "A";
-
-            const ended = checkGameEnd();
-            if (!ended) {
-                updateView();
-            }
-
-            isAnimating = false;
-
-            if (!ended && vsComputer && currentPlayer === "B") {
-                setTimeout(aiMove, 400);
-            }
+    // log move
+    if (addToHistory) {
+        moveCounter++;
+        moveHistory.push({
+            num: moveCounter,
+            player,
+            pit: pitNumberForIndex(startIndex),
+            stonesMoved: stones,
+            steps,
+            lastPit: `${ownerOfPit(lastPit)}${pitNumberForIndex(lastPit)}`,
+            captured,
+            storeA,
+            storeB
         });
-
-        return true;
+        renderHistory();
     }
 
-    // ---------- HUMAN CLICK HANDLER ----------
-
-    function onPitClick(e) {
-        if (gameOver || isAnimating) return;
-
-        const pitEl = e.target.closest(".pit");
-        if (!pitEl) return;
-
-        const player = pitEl.dataset.player;
-        const idx = parseInt(pitEl.dataset.index, 10);
-
-        if (player !== currentPlayer) {
-            setStatus(`It's Player ${currentPlayer}'s turn`);
-            return;
-        }
-
-        if (vsComputer && player === "B") {
-            return;
-        }
-
-        startMove(player, idx);
-    }
-
-    // ---------- AI (Player B) ----------
-
-    function simulateMove(player, idx) {
-        const pitsA_copy = pitsA.slice();
-        const pitsB_copy = pitsB.slice();
-        let storeA_copy = storeA;
-        let storeB_copy = storeB;
-        let tuzA_copy = tuzA;
-        let tuzB_copy = tuzB;
-
-        const pits = player === "A" ? pitsA_copy : pitsB_copy;
-        let stones = pits[idx];
-        if (stones === 0) return null;
-
-        const startPos = player === "A" ? idx : 9 + idx;
-
-        let stonesToSow;
-        if (stones === 1) {
-            pits[idx] = 0;
-            stonesToSow = 1;
-        } else {
-            pits[idx] = 1;
-            stonesToSow = stones - 1;
-        }
-
-        let lastPos = startPos;
-        for (let s = 1; s <= stonesToSow; s++) {
-            lastPos = (startPos + s) % 18;
-            if (lastPos < 9) {
-                pitsA_copy[lastPos]++;
-            } else {
-                pitsB_copy[lastPos - 9]++;
-            }
-            // (We ignore auto tuz collection during AI simulation;
-            //  AI just approximates capture on last pit.)
-        }
-
-        let captured = 0;
-        if (player === "A" && lastPos >= 9) {
-            const pitIndex = lastPos - 9;
-            const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
-            const symmetricForbidden = (tuzB_copy !== null && tuzB_copy === pitIndex);
-            const canCreateTuz =
-                !isOppLastPit && tuzA_copy === null && !symmetricForbidden;
-
-            if (canCreateTuz && pitsB_copy[pitIndex] === 3) {
-                captured = pitsB_copy[pitIndex];
-                storeA_copy += pitsB_copy[pitIndex];
-                tuzA_copy = pitIndex;
-                pitsB_copy[pitIndex] = 0;
-            } else if (
-                pitsB_copy[pitIndex] % 2 === 0 &&
-                pitsB_copy[pitIndex] > 0 &&
-                pitIndex !== tuzA_copy &&
-                pitIndex !== tuzB_copy
-            ) {
-                captured = pitsB_copy[pitIndex];
-                storeA_copy += pitsB_copy[pitIndex];
-            }
-        } else if (player === "B" && lastPos < 9) {
-            const pitIndex = lastPos;
-            const isOppLastPit = pitIndex === PITS_PER_SIDE - 1;
-            const symmetricForbidden = (tuzA_copy !== null && tuzA_copy === pitIndex);
-            const canCreateTuz =
-                !isOppLastPit && tuzB_copy === null && !symmetricForbidden;
-
-            if (canCreateTuz && pitsA_copy[pitIndex] === 3) {
-                captured = pitsA_copy[pitIndex];
-                storeB_copy += pitsA_copy[pitIndex];
-                tuzB_copy = pitIndex;
-                pitsA_copy[pitIndex] = 0;
-            } else if (
-                pitsA_copy[pitIndex] % 2 === 0 &&
-                pitsA_copy[pitIndex] > 0 &&
-                pitIndex !== tuzA_copy &&
-                pitIndex !== tuzB_copy
-            ) {
-                captured = pitsA_copy[pitIndex];
-                storeB_copy += pitsA_copy[pitIndex];
-            }
-        }
-
-        return { captured, lastPos };
-    }
-
-    function aiChoosePit() {
-        let bestIdx = null;
-        let bestCaptured = -1;
-
-        for (let i = 0; i < PITS_PER_SIDE; i++) {
-            if (pitsB[i] === 0) continue;
-            const result = simulateMove("B", i);
-            if (!result) continue;
-            if (result.captured > bestCaptured) {
-                bestCaptured = result.captured;
-                bestIdx = i;
-            }
-        }
-
-        if (bestIdx === null) {
-            for (let i = 0; i < PITS_PER_SIDE; i++) {
-                if (pitsB[i] > 0) {
-                    bestIdx = i;
-                    break;
-                }
-            }
-        }
-
-        return bestIdx;
-    }
-
-    function aiMove() {
-        if (!vsComputer || gameOver || isAnimating || currentPlayer !== "B") return;
-
-        const idx = aiChoosePit();
-        if (idx === null) return;
-
-        startMove("B", idx);
-    }
-
-    // ---------- RESET ----------
-
-    function resetGame() {
-        pitsA = new Array(PITS_PER_SIDE).fill(START_STONES);
-        pitsB = new Array(PITS_PER_SIDE).fill(START_STONES);
-        storeA = 0;
-        storeB = 0;
-        currentPlayer = "A";
-        gameOver = false;
+    // check end of game
+    if (storeA >= TARGET_SCORE || storeB >= TARGET_SCORE || boardEmpty()) {
+        finalizeGame();
         isAnimating = false;
-        tuzA = null;
-        tuzB = null;
-        clearHistory();
-        updateView();
+        return;
+    }
 
-        if (vsComputer) {
-            setStatus("Player A (You) vs Computer (B) – Player A starts");
-        } else {
-            setStatus("Player A starts");
+    // next player
+    currentPlayer = player === 'A' ? 'B' : 'A';
+    setStatus(
+        currentPlayer === 'A'
+            ? "Player A's turn"
+            : "Computer's turn"
+    );
+    isAnimating = false;
+
+    // trigger AI if needed
+    if (!isGameOver && currentPlayer === 'B' && aiEnabled) {
+        setTimeout(aiMove, 500);
+    }
+}
+
+function boardEmpty() {
+    let sumA = 0, sumB = 0;
+    for (let i = 0; i < TOTAL_PITS; i++) {
+        if (ownerOfPit(i) === 'A') sumA += pits[i];
+        else sumB += pits[i];
+    }
+    return sumA === 0 || sumB === 0;
+}
+
+function finalizeGame() {
+    // collect remaining stones
+    for (let i = 0; i < TOTAL_PITS; i++) {
+        const owner = ownerOfPit(i);
+        if (pits[i] > 0) {
+            if (owner === 'A') storeA += pits[i];
+            else storeB += pits[i];
+            pits[i] = 0;
         }
     }
 
-    resetBtn.addEventListener("click", () => {
-        vsComputer = false;
-        resetGame();
+    renderAll();
+
+    isGameOver = true;
+    let message;
+    if (storeA > storeB) {
+        message = `Game over! Player A wins (${storeA} : ${storeB})`;
+    } else if (storeB > storeA) {
+        message = `Game over! Computer wins (${storeB} : ${storeA})`;
+    } else {
+        message = `Game over! Draw (${storeA} : ${storeB})`;
+    }
+    setStatus(message);
+}
+
+// ----------------- AI -----------------
+
+function aiMove() {
+    if (isGameOver || isAnimating || currentPlayer !== 'B') return;
+
+    // choose pit that gives max immediate capture
+    let bestIndex = -1;
+    let bestCapture = -1;
+
+    for (let col = 0; col < NUM_PITS_PER_PLAYER; col++) {
+        const index = NUM_PITS_PER_PLAYER + col; // B pits 9..17
+        if (pits[index] === 0) continue;
+
+        const captured = simulateCapture(index, 'B');
+        if (captured > bestCapture) {
+            bestCapture = captured;
+            bestIndex = index;
+        }
+    }
+
+    // fallback: first non-empty pit
+    if (bestIndex === -1) {
+        for (let col = 0; col < NUM_PITS_PER_PLAYER; col++) {
+            const index = NUM_PITS_PER_PLAYER + col;
+            if (pits[index] > 0) {
+                bestIndex = index;
+                break;
+            }
+        }
+    }
+
+    if (bestIndex !== -1) {
+        performMove(bestIndex, 'B', true);
+    }
+}
+
+// simulate only capture from a move (no animation)
+function simulateCapture(startIndex, player) {
+    const pitsCopy = pits.slice();
+    let storeACopy = storeA;
+    let storeBCopy = storeB;
+    let tuzACopy = tuzA;
+    let tuzBCopy = tuzB;
+
+    let stones = pitsCopy[startIndex];
+    if (stones === 0) return -1;
+
+    let leavingOne = stones > 1;
+    let stonesToSow = leavingOne ? stones - 1 : stones;
+    pitsCopy[startIndex] = leavingOne ? 1 : 0;
+
+    let pos = startIndex;
+
+    while (stonesToSow > 0) {
+        pos = (pos + 1) % TOTAL_PITS;
+
+        if ((player === 'A' && pos === tuzBCopy) || (player === 'B' && pos === tuzACopy)) {
+            if (player === 'A') storeBCopy++;
+            else storeACopy++;
+        } else {
+            pitsCopy[pos]++;
+        }
+
+        stonesToSow--;
+    }
+
+    const lastPit = pos;
+    let captured = 0;
+
+    const opponent = player === 'A' ? 'B' : 'A';
+    if (ownerOfPit(lastPit) === opponent && lastPit !== tuzACopy && lastPit !== tuzBCopy) {
+        const stonesInLast = pitsCopy[lastPit];
+
+        const playerHasTuz = player === 'A' ? tuzACopy !== -1 : tuzBCopy !== -1;
+        const isNinthPit =
+            (opponent === 'A' && lastPit === NUM_PITS_PER_PLAYER - 1) ||
+            (opponent === 'B' && lastPit === TOTAL_PITS - 1);
+
+        if (!playerHasTuz && stonesInLast === 3 && !isNinthPit) {
+            // would create a tuz – decent move, but treat as small gain
+            captured = 1;
+        } else if (stonesInLast % 2 === 0 && stonesInLast > 0) {
+            captured = stonesInLast;
+        }
+    }
+
+    return captured;
+}
+
+// ----------------- SETTINGS + SPLASH -----------------
+
+function initSettings() {
+    // load sound preference
+    const saved = localStorage.getItem('toguz_sound');
+    if (saved !== null) {
+        soundEnabled = saved === '1';
+    }
+    soundToggleEl.checked = soundEnabled;
+
+    soundToggleEl.addEventListener('change', () => {
+        soundEnabled = soundToggleEl.checked;
+        localStorage.setItem('toguz_sound', soundEnabled ? '1' : '0');
+        playBeep(700, 0.03, 0.04);
     });
 
-    aiBtn.addEventListener("click", () => {
-        vsComputer = true;
-        resetGame();
+    settingsBtn.addEventListener('click', () => {
+        settingsOverlayEl.classList.remove('hidden');
     });
 
-    // ---------- SETTINGS LOGIC ----------
+    settingsCloseBtn.addEventListener('click', () => {
+        settingsOverlayEl.classList.add('hidden');
+    });
+}
 
-    function updateRulesText() {
-        if (rulesTextEl) {
-            rulesTextEl.textContent = RULES_TEXT[language] || RULES_TEXT.en;
-        }
-    }
+function initSplash() {
+    splashStartBtn.addEventListener('click', () => {
+        splashEl.style.opacity = '0';
+        setTimeout(() => {
+            splashEl.style.display = 'none';
+        }, 400);
+        resetGame();
+    });
+}
 
-    function loadPreferences() {
-        const s = localStorage.getItem("tk_sound");
-        if (s === "0") {
-            soundOn = false;
-            if (soundToggle) soundToggle.checked = false;
-        } else {
-            soundOn = true;
-            if (soundToggle) soundToggle.checked = true;
-        }
-
-        const lang = localStorage.getItem("tk_lang");
-        if (lang && RULES_TEXT[lang]) {
-            language = lang;
-        }
-        if (languageSelect) {
-            languageSelect.value = language;
-        }
-        updateRulesText();
-    }
-
-    if (settingsBtn && settingsOverlay && settingsClose) {
-        settingsBtn.addEventListener("click", () => {
-            settingsOverlay.classList.remove("hidden");
-        });
-
-        settingsClose.addEventListener("click", () => {
-            settingsOverlay.classList.add("hidden");
-        });
-
-        settingsOverlay.addEventListener("click", (e) => {
-            if (e.target === settingsOverlay) {
-                settingsOverlay.classList.add("hidden");
-            }
-        });
-    }
-
-    if (soundToggle) {
-        soundToggle.addEventListener("change", () => {
-            soundOn = soundToggle.checked;
-            localStorage.setItem("tk_sound", soundOn ? "1" : "0");
-            if (soundOn) {
-                initAudio();
-                playTone(880, 0.08);
-            }
-        });
-    }
-
-    if (languageSelect) {
-        languageSelect.addEventListener("change", () => {
-            language = languageSelect.value;
-            localStorage.setItem("tk_lang", language);
-            updateRulesText();
-        });
-    }
-
-    // ---------- SPLASH LOGIC ----------
-
-    function hideSplash() {
-        if (!splash) return;
-        splash.classList.add("hidden");
-    }
-
-    if (splash && splashStartBtn) {
-        splashStartBtn.addEventListener("click", hideSplash);
-        splash.addEventListener("click", (e) => {
-            if (e.target === splash) hideSplash();
-        });
-    }
-
-    // ---------- INITIALIZE ----------
-
-    createBoardDOM();
-    loadPreferences();
+// new game button always AI
+aiBtn.addEventListener('click', () => {
+    aiEnabled = true;
     resetGame();
+});
+
+// ----------------- INIT -----------------
+
+document.addEventListener('DOMContentLoaded', () => {
+    buildBoard();
+    initSettings();
+    initSplash();
+
+    // Do not start game until splash is closed
+    setStatus('Click "Start Game" to begin');
 });

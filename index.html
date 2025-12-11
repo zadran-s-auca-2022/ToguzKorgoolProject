@@ -3,25 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Toguz Korgool Online</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- SPLASH SCREEN -->
-<div id="splash" class="splash">
-    <div class="splash-panel">
-        <div class="splash-logo">
-            <span>TK</span>
-        </div>
-        <h1 class="splash-title">Toguz Korgool</h1>
-        <p class="splash-subtitle">
-            Traditional Kyrgyz strategy game – web edition
-        </p>
-        <button id="splashStartBtn" class="btn splash-btn">Start Game</button>
-    </div>
-</div>
-
 <div class="container">
     <h1>Toguz Korgool</h1>
 
@@ -31,13 +15,14 @@
     </div>
 
     <div class="board">
-        <!-- Kazan / stores -->
-        <div class="store store-left" id="storeB">
+        <!-- Left store: Player B -->
+        <div class="store" id="storeB">
             <div class="store-label">B<br>Kazan</div>
-            <div class="store-stones"></div>
-            <div class="store-count">0</div>
+            <div class="store-stones" id="storeBStones"></div>
+            <div class="store-count" id="storeBCount">0</div>
         </div>
 
+        <!-- Pits -->
         <div class="pits-area">
             <!-- Top row: Player B -->
             <div class="row row-top" id="row-top"></div>
@@ -46,57 +31,83 @@
             <div class="row row-bottom" id="row-bottom"></div>
         </div>
 
-        <div class="store store-right" id="storeA">
+        <!-- Right store: Player A -->
+        <div class="store" id="storeA">
             <div class="store-label">A<br>Kazan</div>
-            <div class="store-stones"></div>
-            <div class="store-count">0</div>
+            <div class="store-stones" id="storeAStones"></div>
+            <div class="store-count" id="storeACount">0</div>
         </div>
 
-        <!-- MOVE HISTORY OVERLAY INSIDE BOARD -->
-        <div class="history-container">
+        <!-- Move history overlay -->
+        <div class="history-container" id="historyContainer">
             <div class="history-title">Move History</div>
-            <div id="historyList" class="history-list"></div>
+            <div class="history-list" id="historyList"></div>
         </div>
     </div>
 
+    <!-- Status line -->
     <div id="status" class="status"></div>
 
+    <!-- Buttons (AI only) -->
     <div class="buttons">
-        <button id="resetBtn" class="btn">New Game (2 Players)</button>
-        <button id="aiBtn" class="btn btn-secondary">Play vs Computer</button>
+        <button id="aiBtn" class="btn">New Game vs Computer</button>
         <button id="settingsBtn" class="btn btn-secondary">Settings ⚙</button>
     </div>
 </div>
 
-<!-- SETTINGS OVERLAY -->
+<!-- Splash screen -->
+<div id="splash" class="splash">
+    <div class="splash-panel">
+        <div class="splash-logo">
+            <span>9×9</span>
+        </div>
+        <div class="splash-title">Toguz Korgool</div>
+        <div class="splash-subtitle">
+            Traditional Kyrgyz strategy game – play against the computer.
+        </div>
+        <button id="splashStartBtn" class="btn splash-btn">Start Game</button>
+    </div>
+</div>
+
+<!-- Settings overlay -->
 <div id="settingsOverlay" class="settings-overlay hidden">
     <div class="settings-panel">
         <div class="settings-header">
             <h2>Settings</h2>
-            <button id="settingsClose" class="settings-close">&times;</button>
+            <button id="settingsCloseBtn" class="settings-close">&times;</button>
         </div>
-
         <div class="settings-body">
             <div class="settings-section">
                 <h3>Sound</h3>
                 <label class="toggle">
                     <input type="checkbox" id="soundToggle" checked>
-                    <span>Enable game sounds</span>
+                    Enable sounds
                 </label>
             </div>
 
             <div class="settings-section">
                 <h3>Language</h3>
-                <select id="languageSelect">
-                    <option value="en">English</option>
-                    <option value="kg">Kyrgyz</option>
-                    <option value="ru">Russian</option>
-                </select>
+                <p class="rules-text">
+                    Game interface is currently in English. Future versions may
+                    add Kyrgyz / Russian options.
+                </p>
             </div>
 
             <div class="settings-section">
-                <h3>Rules</h3>
-                <p id="rulesText" class="rules-text"></p>
+                <h3>Rules – Short Version</h3>
+                <p class="rules-text">
+                    Each player has 9 pits with 9 korgools (stones) in each, and
+                    a kazan (store). On your turn you choose one of your pits.
+                    If it has 1 stone, it moves to the next pit. If it has more
+                    than 1 stone, one stone stays and the rest are sown
+                    counter-clockwise into the next pits one by one.
+                    <br><br>
+                    If the last stone lands in an opponent’s pit and that pit
+                    now has an even number of stones, they are captured to your
+                    kazan. When a player reaches 82 or more stones, the game
+                    ends and the player with more stones wins. Basic
+                    <em>tuz/sool</em> rule is also supported.
+                </p>
             </div>
         </div>
     </div>
