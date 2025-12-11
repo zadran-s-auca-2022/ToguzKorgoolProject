@@ -100,12 +100,12 @@ function ownerOfPit(index) {
 // Top row   = 9..1 left to right (real board style).
 function pitNumberForIndex(index) {
     if (index < NUM_PITS_PER_PLAYER) {
-        // Bottom row (Player A): left → right = 1..9
+        // Bottom row (Player A): 1..9 left → right
         return index + 1;
     } else {
-        // Top row (Player B): right → left = 1..9
-        // So leftmost top pit shows 9, rightmost shows 1
-        return TOTAL_PITS - index;
+        // Top row (Player B): 1..9 right → left
+        // indices 9..17 -> pits 1..9
+        return index - NUM_PITS_PER_PLAYER + 1;
     }
 }
 
@@ -207,18 +207,18 @@ function createPitElement(index, owner) {
 }
 
 function buildBoard() {
-    // Top row: Player B pits (indices 9..17)
+    // Top row: Player B pits (indices 9..17) – shown RIGHT → LEFT
     rowTop.innerHTML = '';
-    for (let i = 0; i < NUM_PITS_PER_PLAYER; i++) {
-        const index = NUM_PITS_PER_PLAYER + i;
+    for (let i = NUM_PITS_PER_PLAYER - 1; i >= 0; i--) {
+        const index = NUM_PITS_PER_PLAYER + i;  // 17,16,...,9
         const pit = createPitElement(index, 'B');
         rowTop.appendChild(pit);
     }
 
-    // Bottom row: Player A pits (indices 0..8)
+    // Bottom row: Player A pits (indices 0..8) – shown LEFT → RIGHT
     rowBottom.innerHTML = '';
     for (let i = 0; i < NUM_PITS_PER_PLAYER; i++) {
-        const index = i;
+        const index = i;  // 0..8
         const pit = createPitElement(index, 'A');
         rowBottom.appendChild(pit);
     }
