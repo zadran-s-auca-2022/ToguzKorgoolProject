@@ -12,8 +12,8 @@ let pits = new Array(TOTAL_PITS).fill(INITIAL_STONES);
 let storeA = 0; // Player A (bottom)
 let storeB = 0; // Player B (top)
 
-let tuzA = -1; // A's tuz (index in pits)
-let tuzB = -1; // B's tuz
+let tuzA = -1; // A's tuz (index in pits, always on B side 9..17)
+let tuzB = -1; // B's tuz (index in pits, always on A side 0..8)
 
 let currentPlayer = 'A';
 let isAnimating = false;
@@ -96,9 +96,15 @@ function ownerOfPit(index) {
     return index < NUM_PITS_PER_PLAYER ? 'A' : 'B';
 }
 
+// Bottom row = 1..9 left to right.
+// Top row   = 9..1 left to right (real board style).
 function pitNumberForIndex(index) {
-    if (index < NUM_PITS_PER_PLAYER) return index + 1; // A pits 1..9
-    return index - NUM_PITS_PER_PLAYER + 1;            // B pits 1..9
+    if (index < NUM_PITS_PER_PLAYER) {
+        // A pits 0..8 -> 1..9
+        return index + 1;
+    }
+    // B pits 9..17 -> 9..1
+    return TOTAL_PITS - index; // 18-9=9, 18-17=1
 }
 
 function delay(ms) {
@@ -107,6 +113,56 @@ function delay(ms) {
 
 function setStatus(text) {
     statusEl.textContent = text;
+}
+
+// ----------------- TUZ HELPERS -----------------
+
+function isOpponentsPit(player, index) {
+    return ownerOfPit(index) !== player;
+}
+
+// Check if this pit is the opponent's tuz
+function isOpponentTuz(player, index) {
+    if (player === 'A') return index === tuzB;
+    return index === tuzA;
+}
+
+// Is this index the opponent's 9th pit?
+function isOpponentNinthPit(opponent, index) {
+    if (opponent === 'A') {
+        return index === NUM_PITS_PER_PLAYER - 1; // A's 9th pit -> index 8
+    }
+    return index === TOTAL_PITS - 1; // B's 9th pit -> index 17
+}
+
+// Check if we are trying to make a tuz opposite to the opponent's tuz
+function isOppositeToOpponentTuz(player, index) {
+    // For player A, candidate tuz is on B side (9..17).
+    // Opponent B's tuz (tuzB) is on A side (0..8).
+    // Opposite pits: A:i <-> B:9+i
+    if (player === 'A' && tuzB !== -1) {
+        const opposite = tuzB + NUM_PITS_PER_PLAYER;
+        return index === opposite;
+    }
+
+    // For player B, candidate tuz is on A side (0..8).
+    // Opponent A's tuz (tuzA) is on B side (9..17).
+    // Opposite pits: A:i <-> B:9+i
+    if (player === 'B' && tuzA !== -1) {
+        const opposite = tuzA - NUM_PITS_PER_PLAYER;
+        return index === opposite;
+    }
+
+    return false;
+}
+
+function playerHasTuz(player) {
+    return player === 'A' ? tuzA !== -1 : tuzB !== -1;
+}
+
+function giveToKazan(player, stones) {
+    if (player === 'A') storeA += stones;
+    else storeB += stones;
 }
 
 // ----------------- BOARD CREATION -----------------
@@ -318,31 +374,32 @@ async function performMove(startIndex, player, addToHistory) {
         steps++;
     }
 
-    // last pit is 'pos', but if that was a tuz, we consider landing there only for tuz creation rule
     const lastPit = pos;
 
-    // capture / tuz rules only if lastPit really has stones and belongs to opponent
-    if (!isGameOver) {
+    // capture / tuz rules only if lastPit belongs to opponent and is not already a tuz
+    if (!isGameOver && isOpponentsPit(player, lastPit) && !isOpponentTuz(player, lastPit)) {
         const opponent = player === 'A' ? 'B' : 'A';
-        if (ownerOfPit(lastPit) === opponent && lastPit !== tuzA && lastPit !== tuzB) {
-            const stonesInLast = pits[lastPit];
+        const stonesInLast = pits[lastPit];
 
-            // TUZ rule: if last pit now has 3 stones
-            const playerHasTuz = player === 'A' ? tuzA !== -1 : tuzB !== -1;
-            const isNinthPit =
-                (opponent === 'A' && lastPit === NUM_PITS_PER_PLAYER - 1) ||
-                (opponent === 'B' && lastPit === TOTAL_PITS - 1);
+        if (stonesInLast > 0) {
+            const canMakeTuz =
+                !playerHasTuz(player) &&
+                stonesInLast === 3 &&
+                !isOpponentNinthPit(opponent, lastPit) &&
+                !isOppositeToOpponentTuz(player, lastPit);
 
-            if (!playerHasTuz && stonesInLast === 3 && !isNinthPit) {
+            if (canMakeTuz) {
+                // create tuz: move stones to player's kazan and clear pit
                 if (player === 'A') tuzA = lastPit;
                 else tuzB = lastPit;
-            } else if (stonesInLast % 2 === 0 && stonesInLast > 0) {
-                // normal capture on even count
-                if (player === 'A') {
-                    storeA += stonesInLast;
-                } else {
-                    storeB += stonesInLast;
-                }
+
+                giveToKazan(player, stonesInLast);
+                captured += stonesInLast;
+                pits[lastPit] = 0;
+                playCaptureSound();
+            } else if (stonesInLast % 2 === 0) {
+                // normal even capture (not a tuz)
+                giveToKazan(player, stonesInLast);
                 captured += stonesInLast;
                 pits[lastPit] = 0;
                 playCaptureSound();
@@ -464,8 +521,6 @@ function aiMove() {
 // simulate only capture from a move (no animation)
 function simulateCapture(startIndex, player) {
     const pitsCopy = pits.slice();
-    let storeACopy = storeA;
-    let storeBCopy = storeB;
     let tuzACopy = tuzA;
     let tuzBCopy = tuzB;
 
@@ -482,8 +537,8 @@ function simulateCapture(startIndex, player) {
         pos = (pos + 1) % TOTAL_PITS;
 
         if ((player === 'A' && pos === tuzBCopy) || (player === 'B' && pos === tuzACopy)) {
-            if (player === 'A') storeBCopy++;
-            else storeACopy++;
+            // stone goes to opponent store in real game, but
+            // for AI we only care about capture from last pit
         } else {
             pitsCopy[pos]++;
         }
@@ -495,19 +550,33 @@ function simulateCapture(startIndex, player) {
     let captured = 0;
 
     const opponent = player === 'A' ? 'B' : 'A';
-    if (ownerOfPit(lastPit) === opponent && lastPit !== tuzACopy && lastPit !== tuzBCopy) {
+    const isOppPit = ownerOfPit(lastPit) === opponent;
+    const isTuzPit = (player === 'A' && lastPit === tuzBCopy) ||
+                     (player === 'B' && lastPit === tuzACopy);
+
+    if (isOppPit && !isTuzPit) {
         const stonesInLast = pitsCopy[lastPit];
 
-        const playerHasTuz = player === 'A' ? tuzACopy !== -1 : tuzBCopy !== -1;
-        const isNinthPit =
-            (opponent === 'A' && lastPit === NUM_PITS_PER_PLAYER - 1) ||
-            (opponent === 'B' && lastPit === TOTAL_PITS - 1);
+        if (stonesInLast > 0) {
+            const playerHasTuzCopy = player === 'A' ? tuzACopy !== -1 : tuzBCopy !== -1;
 
-        if (!playerHasTuz && stonesInLast === 3 && !isNinthPit) {
-            // would create a tuz – decent move, but treat as small gain
-            captured = 1;
-        } else if (stonesInLast % 2 === 0 && stonesInLast > 0) {
-            captured = stonesInLast;
+            const isNinthPitCopy = isOpponentNinthPit(opponent, lastPit);
+
+            const isOppositeToTuzCopy =
+                (player === 'A' && tuzBCopy !== -1 && lastPit === tuzBCopy + NUM_PITS_PER_PLAYER) ||
+                (player === 'B' && tuzACopy !== -1 && lastPit === tuzACopy - NUM_PITS_PER_PLAYER);
+
+            const canMakeTuzCopy =
+                !playerHasTuzCopy &&
+                stonesInLast === 3 &&
+                !isNinthPitCopy &&
+                !isOppositeToTuzCopy;
+
+            if (canMakeTuzCopy) {
+                captured = stonesInLast; // 3 stones go to kazan
+            } else if (stonesInLast % 2 === 0) {
+                captured = stonesInLast;
+            }
         }
     }
 
