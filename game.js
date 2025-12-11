@@ -100,11 +100,13 @@ function ownerOfPit(index) {
 // Top row   = 9..1 left to right (real board style).
 function pitNumberForIndex(index) {
     if (index < NUM_PITS_PER_PLAYER) {
-        // A pits 0..8 -> 1..9
+        // Bottom row (Player A): left → right = 1..9
         return index + 1;
+    } else {
+        // Top row (Player B): right → left = 1..9
+        // So leftmost top pit shows 9, rightmost shows 1
+        return TOTAL_PITS - index;
     }
-    // B pits 9..17 -> 9..1
-    return TOTAL_PITS - index; // 18-9=9, 18-17=1
 }
 
 function delay(ms) {
